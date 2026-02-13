@@ -10,6 +10,11 @@ pip install -r requirements.txt
 fastapi dev main.py
 
 
+## Run tests
+
+pytest
+
+
 ### Code sources
 
 https://fastapi.tiangolo.com/tutorial/sql-databases/#create-models
