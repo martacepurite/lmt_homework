@@ -13,3 +13,11 @@ fastapi dev main.py
 ### Code sources
 
 https://fastapi.tiangolo.com/tutorial/sql-databases/#create-models
+
+
+## TODO/ideas
+
+* Tests
+* Cost calculation algorithm
+* Optimize imports and file structure
+* Fetch data from database only on start
