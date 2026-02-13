@@ -13,6 +13,7 @@ fastapi dev main.py
 ### Code sources
 
 https://fastapi.tiangolo.com/tutorial/sql-databases/#create-models
+https://sqlmodel.tiangolo.com/tutorial/fastapi/tests/#add-the-rest-of-the-tests
 
 
 ## TODO/ideas

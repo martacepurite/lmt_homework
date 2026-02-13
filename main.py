@@ -5,7 +5,9 @@ import sqlite3
 from enum import Enum
 from pydantic import BaseModel
 
-from definitions import CostType, BaseAirDefenseLink, AirDefenseSolution, Base, RadarMessage
+from .definitions import AirDefenseSolution, Base, CostType, RadarMessage
+
+# from definitions import CostType, BaseAirDefenseLink, AirDefenseSolution, Base, RadarMessage
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -48,7 +50,7 @@ def on_startup():
     add_initial_database_entries()
 
 @app.post("/radar/")
-async def create_radar_message(message: RadarMessage, session: SessionDep):
+def create_radar_message(message: RadarMessage, session: SessionDep):
     response = process_threat(message, session)
     # response = Response()
     return response
