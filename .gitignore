@@ -6,3 +6,5 @@
 /.DS_Store
 
 /.pytest_cache
+
+database.db

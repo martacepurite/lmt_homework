@@ -5,7 +5,7 @@ import sqlite3
 from enum import Enum
 from pydantic import BaseModel
 
-from .definitions import AirDefenseSolution, Base, CostType, RadarMessage
+from .definitions import AirDefenseSolution, Base, CostType, RadarMessage, Classification, Response
 
 # from definitions import CostType, BaseAirDefenseLink, AirDefenseSolution, Base, RadarMessage
 
@@ -43,7 +43,6 @@ def get_session():
 SessionDep = Annotated[Session, Depends(get_session)]
 app = FastAPI()
 
-
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
@@ -51,9 +50,13 @@ def on_startup():
 
 @app.post("/radar/")
 def create_radar_message(message: RadarMessage, session: SessionDep):
-    response = process_threat(message, session)
-    # response = Response()
-    return response
+    classification = process_radar_data(message, session)
+
+    if classification == Classification.CAUTION or classification == Classification.IGNORE:
+        return classification
+
+    response = get_threat_response(message, session)
+    return response 
 
 @app.post("/bases/")
 def create_base(base: Base, session: SessionDep) -> Base:
@@ -96,10 +99,40 @@ def delete_base(base_id: int, session: SessionDep):
     session.commit()
     return {"ok": True}
 
-def process_threat(radar_message: RadarMessage, session: SessionDep):
+# If the speed is below 15 m/s or flying altitude is below 200 m we can assume it is not a threat
+# If the speed is above 15 m/s it is caution
+# If the speed is above 50 m/s it is a threat
+# All other cases should be classified as potential threat
 
-    
+# {
+#   "speed_ms": 0,
+#   "altitude_m": 0,
+#   "heading_deg": 0,
+#   "latitude": 0,
+#   "longitude": 0,
+#   "report_time": 0
+# }
+def process_radar_data(radar_message: RadarMessage, session: SessionDep):
+
+    # Add error handling
+    radar_dict = radar_message.model_dump()
+
+    if radar_dict["speed_ms"] < 15 or radar_dict["altitude_m"] < 200:
+        return Classification.IGNORE
+
+    if radar_dict["speed_ms"] < 50:
+        return Classification.CAUTION
+
+    return Classification.THREAT
+        
+
+def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     all_air_defense = session.exec(select(AirDefenseSolution)).all()
-    print(all_air_defense)
+    all_bases = session.exec(select(Base)).all()
 
-    return all_air_defense
+    chosen_base = list(all_bases)[0]
+    chosen_weapon = list(all_air_defense)[0]
+
+    response = Response(base=str(chosen_base.name), type=str(chosen_weapon.name), latitude=50.2, longitude=21.1)
+
+    return response

@@ -10,6 +10,11 @@ class CostType(Enum):
     UNIT = "Cost per unit (single use)"
     TIME = "Cost per unit of time (minutes)"
 
+class Classification(Enum):
+    THREAT = "Threat"
+    CAUTION = "Caution"
+    IGNORE = "Not a threat or caution"
+
 class BaseAirDefenseLink(SQLModel, table=True):
     base_id: int | None = Field(default=None, foreign_key="base.id", primary_key=True)
     airdefensesolution_id: int | None = Field(default=None, foreign_key="airdefensesolution.id", primary_key=True)
@@ -39,7 +44,7 @@ class RadarMessage(BaseModel):
     heading_deg: float
     latitude: float
     longitude: float
-    report_time: int
+    report_time: float
 
 class Response(BaseModel):
     base: str

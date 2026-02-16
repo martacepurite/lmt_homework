@@ -53,7 +53,35 @@ def test_create_radar_message(session: Session, client: TestClient):
         }
     )
     data = response.json()
+    assert response.status_code == 200
 
+def test_create_radar_message_ignore(session: Session, client: TestClient):
+    airdef_drone = AirDefenseSolution(name="Interceptor drone", speed=80, range=30000, max_altitude=2000, price=10000, cost_type=CostType.UNIT)
+    airdef_jet = AirDefenseSolution(name="Fighter jet", speed=700, range=3500, max_altitude=15000, price=1000, cost_type=CostType.TIME)
+    airdef_rocket= AirDefenseSolution(name="Rocket", speed=1500, range=100000, max_altitude=30000, price=300000, cost_type=CostType.UNIT)
+    airdef_50cal = AirDefenseSolution(name="50Cal", speed=900, range=2000, max_altitude=2000, price=1, cost_type=CostType.UNIT)
+
+    base_riga = Base(name="Riga", latitude=56.97475845607155, longitude=24.1670070219384, airdefense=[airdef_drone, airdef_jet, airdef_rocket, airdef_50cal])
+    base_liepaja = Base(name="Liepaja", latitude=56.516083346891044, longitude=21.0182217849017, airdefense=[airdef_drone, airdef_50cal])
+    base_daugavpils = Base(name="Daugavpils", latitude=55.87409588616014, longitude=26.51864225209475, airdefense=[airdef_drone, airdef_rocket, airdef_50cal])
+
+    session.add(base_riga)
+    session.add(base_liepaja)
+    session.add(base_daugavpils)
+    session.commit()
+
+    # speed_ms < 15, altitude_m > 200
+    response = client.post(
+        "/radar/", json={
+            "speed_ms": 12,
+            "altitude_m": 250,
+            "heading_deg": 0,
+            "latitude": 0,
+            "longitude": 0,
+            "report_time": 0
+        }
+    )
+    data = response.json()
     assert response.status_code == 200
 
 
