@@ -4,6 +4,8 @@ import time
 import json
 import math
 import numpy as np
+import plotly.express as px
+import pandas as pd
 
 MIN_HEADING_DEG = 0
 MAX_HEADING_DEG = 360
@@ -109,4 +111,10 @@ if __name__ == '__main__':
         print(json.dumps(r.json(), indent=4))
     else:
         print(r.text)
+
+    # Plot bases
+    data_points = {"latitude": [RADAR_LAT_1, RADAR_LAT_2, RADAR_LAT_3], "longitude": [RADAR_LON_1, RADAR_LON_2, RADAR_LON_3]}
+    df = pd.DataFrame(data=data_points)
+    fig = px.scatter_geo(df, lat = "latitude", lon = "longitude")
+    fig.show()
 
