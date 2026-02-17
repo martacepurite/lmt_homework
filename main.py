@@ -7,6 +7,7 @@ from pydantic import BaseModel
 import os
 from geopy import distance
 import math
+import numpy as np
 
 from .definitions import AirDefenseSolution, Base, CostType, RadarMessage, Classification, Response
 
@@ -108,11 +109,6 @@ def delete_base(base_id: int, session: SessionDep):
     session.commit()
     return {"ok": True}
 
-# If the speed is below 15 m/s or flying altitude is below 200 m we can assume it is not a threat
-# If the speed is above 15 m/s it is caution
-# If the speed is above 50 m/s it is a threat
-# All other cases should be classified as potential threat
-
 # {
 #   "speed_ms": 0,
 #   "altitude_m": 0,
@@ -126,7 +122,7 @@ def process_radar_data(radar_message: RadarMessage, session: SessionDep):
     # Add error handling
     radar_dict = radar_message.model_dump()
 
-    if radar_dict["speed_ms"] >= 50:
+    if radar_dict["speed_ms"] > 50:
         return Classification.THREAT
 
     if radar_dict["speed_ms"] < 15:
@@ -135,15 +131,10 @@ def process_radar_data(radar_message: RadarMessage, session: SessionDep):
     if radar_dict["altitude_m"] < 200:
         return Classification.IGNORE
 
-    if radar_dict["speed_ms"] < 50:
+    if radar_dict["speed_ms"] <= 50:
         return Classification.CAUTION
 
     return Classification.THREAT
-
-
-# Target needs to be within range 
-# Calculate cost
-# Prefer cheapest 
 
 
 # Calculate coordinate where target will be intercepted
@@ -151,6 +142,9 @@ def get_interception_coords(radar_message: RadarMessage, airdef_speed):
     pass
 
         
+# Target needs to be within range 
+# Calculate cost
+# Prefer cheapest 
 
 def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     all_bases = session.exec(select(Base)).all()
@@ -159,6 +153,7 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     print(all_bases)
     print()
     print(radar_message)
+    print()
 
     # Get target distance from each base
     coords_target = (radar_message.latitude, radar_message.longitude, radar_message.altitude_m)
@@ -166,9 +161,17 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     
     for b in all_bases:
         coords_base = (b.latitude, b.longitude, 0)
-        # TODO deal with altitude
-        distance = math.dist(coords_base, coords_target)
-        bases_distances[b.id] = distance
+        print(coords_base)
+        # distance = math.dist(coords_base, coords_target)
+        distance_2d = distance.distance(coords_base[:2], coords_target[:2]).m
+        print("distance_2d: ")
+        print(distance_2d)
+
+        distance_3d = np.sqrt(distance_2d**2 + (coords_target[2] - coords_base[2])**2)
+        print("distance_3d: ")
+        print(distance_3d)
+        print()
+        bases_distances[b.id] = distance_3d
 
     print(coords_target)
     print()
@@ -178,9 +181,9 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
 
     # for b in all_bases:
 
-    q = session.query(Base, AirDefenseSolution).all()
+    # q = session.query(Base, AirDefenseSolution).all()
 
-    print(q)
+    # print(q)
 
 
 
