@@ -113,8 +113,17 @@ if __name__ == '__main__':
         print(r.text)
 
     # Plot bases
-    data_points = {"latitude": [RADAR_LAT_1, RADAR_LAT_2, RADAR_LAT_3], "longitude": [RADAR_LON_1, RADAR_LON_2, RADAR_LON_3]}
-    df = pd.DataFrame(data=data_points)
-    fig = px.scatter_geo(df, lat = "latitude", lon = "longitude")
-    fig.show()
+    # data_points = {"latitude": [RADAR_LAT_1, RADAR_LAT_2, RADAR_LAT_3],
+    #                 "longitude": [RADAR_LON_1, RADAR_LON_2, RADAR_LON_3],
+    #                 "type": ["base", "base", "base"]}
+    # df = pd.DataFrame(data=data_points)
+
+    # threat = {"latitude": d1["latitude"], "longitude": d1["longitude"], "type": "threat"}
+
+    # df.loc[len(df)] = threat
+
+
+
+    # fig = px.scatter_geo(df, color="type", lat="latitude", lon="longitude", scope="europe", center={'lat': RADAR_LAT_1, 'lon': RADAR_LON_1 })
+    # fig.show()
 

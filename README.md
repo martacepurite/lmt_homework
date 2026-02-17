@@ -29,8 +29,7 @@ https://plotly.com/python/scatter-plots-on-maps/
 ## TODO/ideas
 
 * Docker
-* Figure out distance algo with altitude
-* Add 200km radar range to radar mock
+* Replace cost type enum with just string to ease serialization 
 * Update radar data schema
 * floats with single precision
 * Error handling
@@ -38,7 +37,6 @@ https://plotly.com/python/scatter-plots-on-maps/
 * Cost calculation algorithm
 * Prioritising algorithm to make quicker decisions if target is high danger (fast)
 * Fetch data from database only on start
-* Geo mapping library to visualize objects, trajectories
 
 
 

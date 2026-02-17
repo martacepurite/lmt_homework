@@ -8,6 +8,7 @@ import os
 from geopy import distance
 import math
 import numpy as np
+import json
 
 from .definitions import AirDefenseSolution, Base, CostType, RadarMessage, Classification, Response
 
@@ -149,8 +150,7 @@ def get_interception_coords(radar_message: RadarMessage, airdef_speed):
 def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     all_bases = session.exec(select(Base)).all()
 
-    # print(all_air_defense)
-    print(all_bases)
+
     print()
     print(radar_message)
     print()
@@ -161,38 +161,49 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     
     for b in all_bases:
         coords_base = (b.latitude, b.longitude, 0)
-        print(coords_base)
-        # distance = math.dist(coords_base, coords_target)
         distance_2d = distance.distance(coords_base[:2], coords_target[:2]).m
-        print("distance_2d: ")
-        print(distance_2d)
-
         distance_3d = np.sqrt(distance_2d**2 + (coords_target[2] - coords_base[2])**2)
-        print("distance_3d: ")
-        print(distance_3d)
-        print()
-        bases_distances[b.id] = distance_3d
+        bases_distances[b.id] = round(distance_3d, 7)
 
     print(coords_target)
     print()
     print(bases_distances)
 
-    # Get weapons in each base
+    min_distance = bases_distances[1]
+    min_distance_base_id = 1
 
-    # for b in all_bases:
+    for d in bases_distances.keys():
+        if bases_distances[d] < min_distance:
+            min_distance = bases_distances[d]
+            min_distance_base_id = d
 
-    # q = session.query(Base, AirDefenseSolution).all()
-
-    # print(q)
-
-
-
+    print(min_distance_base_id)
+    print(min_distance)
 
     # Get weapons in each base that have range to reach target
+    possible_bases_weapons = []
+    print()
+    for b in all_bases:
+
+        base_dict = b.model_dump()
+        in_range_weapons = []
+        for a in b.airdefense:
+            if a.range >= bases_distances[b.id]:
+                in_range_weapons.append(a.model_dump())
+        
+        if len(in_range_weapons) > 0:
+            base_dict["defense_systems"] = in_range_weapons
+            possible_bases_weapons.append(base_dict)
+
+    
+    
+    # print(json.dumps(possible_bases_weapons, indent=4))
+        
+
+
 
     # Calculate coordinate of interception for each in range weapon in each base
 
-    # Calculate cost for each option
 
     # Calculate cost for each option
 
