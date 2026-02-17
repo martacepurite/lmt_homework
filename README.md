@@ -19,15 +19,18 @@ pytest
 
 https://fastapi.tiangolo.com/tutorial/sql-databases/#create-models
 https://sqlmodel.tiangolo.com/tutorial/fastapi/tests/#add-the-rest-of-the-tests
+https://geopy.readthedocs.io/en/latest/
 
 
 ## TODO/ideas
 
 * Docker
+* Figure out distance algo with altitude
+* Add 200km radar range to radar mock
 * Error handling
 * More tests
-* Mock radar data sender for testing
 * Cost calculation algorithm
+* Prioritising algorithm to make quicker decisions if target is high danger (fast)
 * Fetch data from database only on start
 * Geo mapping library to visualize objects, trajectories
 

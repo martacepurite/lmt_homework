@@ -4,6 +4,9 @@ from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, sele
 import sqlite3
 from enum import Enum
 from pydantic import BaseModel
+import os
+from geopy import distance
+import math
 
 from .definitions import AirDefenseSolution, Base, CostType, RadarMessage, Classification, Response
 
@@ -47,6 +50,12 @@ app = FastAPI()
 def on_startup():
     create_db_and_tables()
     add_initial_database_entries()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    if os.path.exists("database.db"):
+        os.remove("database.db")
+
 
 @app.post("/radar/")
 def create_radar_message(message: RadarMessage, session: SessionDep):
@@ -117,21 +126,78 @@ def process_radar_data(radar_message: RadarMessage, session: SessionDep):
     # Add error handling
     radar_dict = radar_message.model_dump()
 
-    if radar_dict["speed_ms"] < 15 or radar_dict["altitude_m"] < 200:
+    if radar_dict["speed_ms"] >= 50:
+        return Classification.THREAT
+
+    if radar_dict["speed_ms"] < 15:
+        return Classification.IGNORE
+
+    if radar_dict["altitude_m"] < 200:
         return Classification.IGNORE
 
     if radar_dict["speed_ms"] < 50:
         return Classification.CAUTION
 
     return Classification.THREAT
+
+
+# Target needs to be within range 
+# Calculate cost
+# Prefer cheapest 
+
+
+# Calculate coordinate where target will be intercepted
+def get_interception_coords(radar_message: RadarMessage, airdef_speed):
+    pass
+
         
 
 def get_threat_response(radar_message: RadarMessage, session: SessionDep):
-    all_air_defense = session.exec(select(AirDefenseSolution)).all()
     all_bases = session.exec(select(Base)).all()
+
+    # print(all_air_defense)
+    print(all_bases)
+    print()
+    print(radar_message)
+
+    # Get target distance from each base
+    coords_target = (radar_message.latitude, radar_message.longitude, radar_message.altitude_m)
+    bases_distances = {}
+    
+    for b in all_bases:
+        coords_base = (b.latitude, b.longitude, 0)
+        # TODO deal with altitude
+        distance = math.dist(coords_base, coords_target)
+        bases_distances[b.id] = distance
+
+    print(coords_target)
+    print()
+    print(bases_distances)
+
+    # Get weapons in each base
+
+    # for b in all_bases:
+
+    q = session.query(Base, AirDefenseSolution).all()
+
+    print(q)
+
+
+
+
+    # Get weapons in each base that have range to reach target
+
+    # Calculate coordinate of interception for each in range weapon in each base
+
+    # Calculate cost for each option
+
+    # Calculate cost for each option
+
+    all_air_defense = session.exec(select(AirDefenseSolution)).all()
 
     chosen_base = list(all_bases)[0]
     chosen_weapon = list(all_air_defense)[0]
+
 
     response = Response(base=str(chosen_base.name), type=str(chosen_weapon.name), latitude=50.2, longitude=21.1)
 

@@ -54,7 +54,10 @@ System should classify threat based on flying altitude and speed.
 If the speed is below 15 m/s or flying altitude is below 200 m we can assume it is not a threat
 If the speed is above 15 m/s it is caution
 If the speed is above 50 m/s it is a threat
+Speed is higher priority than altitude. All objects flying more than 50 m/s are  potential threats!
 All other cases should be classified as potential threat
+
+Each radar has effective range of 200km radius
 
 The system outcome should be a chosen type of interception, chosen base and coordinate where the target will be intercepted. (Optionally you can show it on a map)
 
@@ -70,6 +73,19 @@ Sample of radar system data. Radar system will send a new data every 1 second.
 }
 ```
 
+Please find specification file below. I also noticed, that some fields where "optional" and did not appear in sample data!
+```JSON
+{
+    "speed_ms": <float>,
+    "altitude_m": <float>,
+    "heading_deg": <float>,
+    "latitude": <float>,
+    "longitude": <float>,
+    "report_time": <unix_timestamp>
+    "record_id"?: <string>,
+    "trajectory_id"?: <string>
+}
+```
 
 
 So what do I expect:
