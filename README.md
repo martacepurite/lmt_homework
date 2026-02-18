@@ -15,7 +15,7 @@ fastapi dev main.py
 pytest
 
 
-### Code sources
+### Code and info sources
 
 https://fastapi.tiangolo.com/tutorial/sql-databases/#create-models
 https://sqlmodel.tiangolo.com/tutorial/fastapi/tests/#add-the-rest-of-the-tests
@@ -25,17 +25,23 @@ https://forest.moscowfsl.wsu.edu/fswepp/rc/kmlatcon.html
 https://plotly.com/python/getting-started/
 https://plotly.com/python/scatter-plots-on-maps/
 
+https://geopy.readthedocs.io/en/latest/index.html#geopy.distance.Distance.destination
+https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-from-old-n-meters
+
 
 ## TODO/ideas
 
 * Docker
-* Replace cost type enum with just string to ease serialization 
 * Update radar data schema
 * floats with single precision
 * Error handling
 * More tests
 * Cost calculation algorithm
+* Animations?
 * Prioritising algorithm to make quicker decisions if target is high danger (fast)
+* Triage algorithm 
+    * Speed
+    * Heading direction (towards/away)
 * Fetch data from database only on start
 
 

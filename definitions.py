@@ -6,10 +6,6 @@ from enum import Enum
 from pydantic import BaseModel
 
 
-class CostType(Enum):
-    UNIT = "Cost per unit (single use)"
-    TIME = "Cost per unit of time (minutes)"
-
 class Classification(Enum):
     THREAT = "Threat"
     CAUTION = "Caution"
@@ -26,7 +22,7 @@ class AirDefenseSolution(SQLModel, table=True):
     range: int
     max_altitude: int
     price: int
-    cost_type: CostType
+    cost_type: str
 
     bases: list["Base"] = Relationship(back_populates="airdefense", link_model=BaseAirDefenseLink)
 
