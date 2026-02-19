@@ -24,6 +24,8 @@ https://gis.stackexchange.com/questions/425452/calculate-distance-between-two-la
 https://forest.moscowfsl.wsu.edu/fswepp/rc/kmlatcon.html
 https://plotly.com/python/getting-started/
 https://plotly.com/python/scatter-plots-on-maps/
+https://plotly.com/python-api-reference/generated/plotly.graph_objects.Scattergeo.html
+https://plotly.com/python/map-configuration/
 
 https://geopy.readthedocs.io/en/latest/index.html#geopy.distance.Distance.destination
 https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-from-old-n-meters
@@ -32,17 +34,28 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 ## TODO/ideas
 
 * Docker
+* VSCode debugger?
+* Which api endpoints are needed 
+* Visualize range of radars, air defense systems
 * Update radar data schema
 * floats with single precision
 * Error handling
 * More tests
 * Cost calculation algorithm
+* Radar record_id and trajectory_id? Does this mean we may get updates for the same object (though these did not appear in sample data)
 * Animations?
 * Prioritising algorithm to make quicker decisions if target is high danger (fast)
 * Triage algorithm 
     * Speed
     * Heading direction (towards/away)
 * Fetch data from database only on start
+
+
+## Tradeoffs, limitations, assumptions in calculations
+
+* Ignore gravity etc
+* Assume velocities and threat altitude are constant
+* The system has to respond immediately - we cannot wait for a target to move closer into range since a new radar signal is received each second, and the system does not support concurrently dealing with threats and listening for new ones. Therefore some threats which are out of range at first but would be in range a few seconds later are dismissed as unactionable.
 
 
 

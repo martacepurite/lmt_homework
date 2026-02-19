@@ -6,6 +6,7 @@ import math
 import numpy as np
 import plotly.express as px
 import pandas as pd
+import plotly.graph_objects as go
 
 MIN_HEADING_DEG = 0
 MAX_HEADING_DEG = 360
@@ -13,7 +14,8 @@ MIN_SPEED_MS = 1
 MAX_SPEED_MS = 2000
 MIN_ALTITUDE_M = 5
 # Lower than 200km so as not to pick up spacecraft (? unclear)
-MAX_ALTITUDE_M = 2000
+# MAX_ALTITUDE_M = 2000
+MAX_ALTITUDE_M = 500
 
 MIN_LATITUDE_GLOBAL = -90
 MAX_LATITUDE_GLOBAL = 90
@@ -49,7 +51,7 @@ RADAR_LON_3 = 26.51864225209475
 
 path_radar_api = "http://127.0.0.1:8000/radar/"
 
-random.seed(10)
+# random.seed(10)
 
 def calculate_radar_range(radar_lat, radar_lon):
     deg_200km = 1.80874
@@ -99,31 +101,140 @@ def generate_random_radar_data():
     return data
 
 
+actionable_radar_data = [
+    {
+        "speed_ms": 66.1375455, # Daugavpils only
+        "altitude_m": 967.7105407,
+        "heading_deg": 5.3396806,
+        "latitude": 55.7387316,
+        "longitude": 26.4628966,
+        "report_time": 1771499951
+    },
+    {
+        "speed_ms": 1993.1174281,
+        "altitude_m": 93.889983,
+        "heading_deg": 309.6579734,
+        "latitude": 56.2473859,
+        "longitude": 25.7603382,
+        "report_time": 1771499951
+    },
+    {
+        "speed_ms": 1555.2452674,
+        "altitude_m": 962.8661135,
+        "heading_deg": 125.1256522,
+        "latitude": 56.7385752,
+        "longitude": 20.903525,
+        "report_time": 1771499952
+    },
+    {
+        "speed_ms": 1040.6992789,
+        "altitude_m": 1206.1992131,
+        "heading_deg": 22.5985046,
+        "latitude": 56.4776878,
+        "longitude": 20.7670884,
+        "report_time": 1771501189
+    },
+    {
+        "speed_ms": 1795.9851297,
+        "altitude_m": 1397.2513429,
+        "heading_deg": 152.391817,
+        "latitude": 57.0570019,
+        "longitude": 23.6855625,
+        "report_time": 1771501189
+    },
+    {
+        "speed_ms": 1479.5428755,
+        "altitude_m": 649.5084518,
+        "heading_deg": 11.843851,
+        "latitude": 55.8735191,
+        "longitude": 26.8349929,
+        "report_time": 1771501189
+    },
+    {
+        "speed_ms": 400.2817357,
+        "altitude_m": 1545.690476,
+        "heading_deg": 286.9629606,
+        "latitude": 57.04575,
+        "longitude": 25.5451234,
+        "report_time": 1771501189
+    },
+    {
+        "speed_ms": 400.2817357,
+        "altitude_m": 545.690476,
+        "heading_deg": 286.9629606,
+        "latitude": 55.729043,
+        "longitude": 23.853226,
+        "report_time": 1771501189
+    }
+
+]
+
+N_THREATS = 15
+
+
 if __name__ == '__main__':
 
-    d1 = generate_random_radar_data()
+    # for n in range(N_THREATS):
 
-    print(json.dumps(d1, indent=4))
+    #     d1 = generate_random_radar_data()
 
-    r = requests.post(path_radar_api, json=d1)
 
-    if r.status_code == 200:
-        print(json.dumps(r.json(), indent=4))
-    else:
-        print(r.text)
+    #     r = requests.post(path_radar_api, json=d1)
+
+    #     if r.status_code == 200:
+    #         print(json.dumps(d1, indent=4))
+    #         # print(json.dumps(r.json(), indent=4))
+    #     else:
+    #         print(r.text)
+
+
+    # for d in actionable_radar_data:
+    #     r = requests.post(path_radar_api, json=d)
+
+    #     if r.status_code == 200:
+    #         print(json.dumps(d, indent=4))
+    #         # print(json.dumps(r.json(), indent=4))
+    #     else:
+    #         print(r.text)
+
+
 
     # Plot bases
-    # data_points = {"latitude": [RADAR_LAT_1, RADAR_LAT_2, RADAR_LAT_3],
-    #                 "longitude": [RADAR_LON_1, RADAR_LON_2, RADAR_LON_3],
-    #                 "type": ["base", "base", "base"]}
-    # df = pd.DataFrame(data=data_points)
+    data_points = {"latitude": [RADAR_LAT_1, RADAR_LAT_2, RADAR_LAT_3],
+                    "longitude": [RADAR_LON_1, RADAR_LON_2, RADAR_LON_3],
+                    "type": ["base", "base", "base"],
+                    "range": [200, 100, 100]}
+    df = pd.DataFrame(data=data_points)
+
+    for n in range(N_THREATS):
+
+        d1 = generate_random_radar_data()
+        threat = {"latitude": d1["latitude"], "longitude": d1["longitude"], "type": "threat", "range": 50}
+        df.loc[len(df)] = threat
 
     # threat = {"latitude": d1["latitude"], "longitude": d1["longitude"], "type": "threat"}
 
     # df.loc[len(df)] = threat
+    colors=('#1e90ff','#ff8c00','#2e8b57', '#1e90ff','#fa9cff','#4f7b57')
+
+    fig = go.Figure(data=go.Scattergeo(
+        lon = df['longitude'],
+        lat = df['latitude'],
+        text = df['type'],
+        mode = 'markers',
+        marker_color = colors,
+        marker = dict(
+            size = 8,
+            opacity = 0.8,
+            symbol = 'square',
+        )))
+
+    # fig.update_layout()
+    fig.update_geos(fitbounds="locations", scope="europe", showcountries=True, lataxis_showgrid=True, lonaxis_showgrid=True, resolution=50)
+    # fig.update_geos(scope="europe", showcountries=True)
 
 
-
-    # fig = px.scatter_geo(df, color="type", lat="latitude", lon="longitude", scope="europe", center={'lat': RADAR_LAT_1, 'lon': RADAR_LON_1 })
-    # fig.show()
+    # fig = px.scatter_geo(df, color="type", lat="latitude", lon="longitude", scope="europe", center={'lat': RADAR_LAT_1, 'lon': RADAR_LON_1 }, size="range")
+    # fig.add_traces([go.Scatter(x=[1,2,3], y=[2,1,2]), go.Scatter(x=[1,2,3], y=[2,1,2])]) 
+    fig.show()
 

@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
 import sqlite3
 from enum import Enum
@@ -21,6 +21,9 @@ RADAR_LON_2 = 21.0182217849017
 
 RADAR_LAT_3 = 55.87409588616014
 RADAR_LON_3 = 26.51864225209475
+
+TIME_DELTA = 10 # step for calculations, in seconds
+MAX_TIME = 1000 # how far in time to calculate, in seconds
 
 
 # from definitions import CostType, BaseAirDefenseLink, AirDefenseSolution, Base, RadarMessage
@@ -78,6 +81,11 @@ def create_radar_message(message: RadarMessage, session: SessionDep):
         return classification
 
     response = get_threat_response(message, session)
+    if not isinstance(response, Response):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(response)
+        )
     return response 
 
 @app.post("/bases/")
@@ -121,14 +129,6 @@ def delete_base(base_id: int, session: SessionDep):
     session.commit()
     return {"ok": True}
 
-# {
-#   "speed_ms": 0,
-#   "altitude_m": 0,
-#   "heading_deg": 0,
-#   "latitude": 0,
-#   "longitude": 0,
-#   "report_time": 0
-# }
 def process_radar_data(radar_message: RadarMessage, session: SessionDep):
 
     # Add error handling
@@ -149,11 +149,6 @@ def process_radar_data(radar_message: RadarMessage, session: SessionDep):
     return Classification.THREAT
 
 
-# Calculate coordinate where target will be intercepted
-def get_interception_coords(radar_message: RadarMessage, airdef_speed):
-    pass
-
-        
 # Target needs to be within range 
 # Calculate cost
 # Prefer cheapest 
@@ -182,14 +177,6 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
         dist_vec = np.absolute(np.array(coords_target_vec) - np.array(coords_base_vec))
         bases_distances_coord_vectors[b.id] = dist_vec
 
-
-    # print(bases_distances_coord_vectors)
-
-
-    # print(coords_target)
-    # print()
-    # print(bases_distances)
-
     min_distance = bases_distances[1]
     min_distance_base_id = 1
 
@@ -200,12 +187,12 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
 
     # print(min_distance_base_id)
     # print(min_distance)
+    print(json.dumps(bases_distances, indent=4))
 
     # Get weapons in each base that have range to reach target
     possible_bases_weapons = []
     print()
     for b in all_bases:
-
         base_dict = b.model_dump()
         in_range_weapons = []
         for a in b.airdefense:
@@ -216,17 +203,17 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
             base_dict["defense_systems"] = in_range_weapons
             possible_bases_weapons.append(base_dict)
 
+    if len(possible_bases_weapons) < 1:
+        # TODO better handling
+        return "No response possible"
+
+    print(json.dumps(possible_bases_weapons, indent=4))
 
     # Calculate path of target
     # Calculate displacement each second
     # Assume target altitude is constant
     # Assume speeds are constant
     # Ignore gravity etc
-    # Interceptor is launched at 45 degree angle?
-
-    # d = vt
-    # d0 = 0
-    # d1 = speed * 1
 
     target_displacement = []
     target_speed = radar_message.speed_ms
@@ -235,17 +222,8 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     for i in range(0,10):
         target_displacement.append(round(target_speed * i, 7))
 
-
-    print(target_displacement)
+    # print(target_displacement)
     
-    # Calculate displacement each second for launched interceptor
-    # Calculate distance between target and base each second
-    # Need to recalculate coordinates each second
-
-    # Distance interceptor has travelled = Distance from target to base
-    # Distance interceptor has travelled = time * speed_interc
-    # Distance from target to base = D_timezero +(-) t * (speed at which it is moving towards base (component of velocity vector that is in the direction of base)) (this is not the right way)
-
     # Calculate distances componentwise separately for each axis
     # Calculate x and y components of target velocity, needs heading degrees
     # need to account for sign/direction, check later
@@ -255,10 +233,6 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     theta = 90 - (radar_message.heading_deg % 180) # angle relative to x axis
     target_velocity_x = target_speed * math.cos(math.radians(theta))
     target_velocity_y = target_speed * math.sin(math.radians(theta))
-    # print("target_velocity_x:")
-    # print(target_velocity_x)
-    # print("target_velocity_y:")
-    # print(target_velocity_y)
 
     # Calculate next positions of target
     # Calculate distance traveled in x and y directions
@@ -268,59 +242,92 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     targ_lon = coords_target_vec[1]
     threat_path = []
 
-    # for time_s in range(1,100):
-    for time_s in range(1,5000,50):
+    for time_s in range(1,MAX_TIME, TIME_DELTA):
         dx = target_velocity_x * time_s
         dy = target_velocity_y * time_s
         # check for mistakes wrt units - radians
         new_latitude  = targ_lat + (dy / r_earth) * (180 / math.pi)
         new_longitude = targ_lon + (dx / r_earth) * (180 / math.pi) / math.cos(targ_lat * math.pi/180)
-        next_targ_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": "threat", "t": time_s}
+        next_targ_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": "threat", "info": str(radar_message.model_dump()), "t": time_s}
         threat_path.append(next_targ_loc)
     
-    # for base in possible_bases_weapons:
-    #     print(json.dumps(base, indent=4))
-
-    base_1_lat = possible_bases_weapons[0]["latitude"]
-    base_1_lon = possible_bases_weapons[0]["longitude"]
-    intercep_1 = possible_bases_weapons[0]["defense_systems"][0]
-    print(json.dumps(intercep_1, indent=4))
-    # Calculate coordinate of interception: 
-    # Calculate time to reach coordinate on threat path for each point on path
-    # Check if time to reach is equal or close to time of threat path point
-    # if it is the same or close, that is the solution coordinate, where target and airdef will meet
-
-    closest_time = math.inf
-    interception_coords = []
-    intercep_info = ""
-
-    for threat_coords in threat_path:
-        coords_target_n = (threat_coords["latitude"], threat_coords["longitude"], radar_message.altitude_m)
-        # print(coords_target_n)
-        coords_base = (base_1_lat, base_1_lon, 0)
-        distance_2d = distance.distance(coords_base[:2], coords_target_n[:2]).m
-        distance_3d = np.sqrt(distance_2d**2 + (coords_target_n[2] - coords_base[2])**2)
-        # print(distance_3d)
-        time_airdef = round(distance_3d/intercep_1["speed"], 4)
-        time_diff = np.absolute(time_airdef - threat_coords["t"])
-        print("time_airdef: " + str(time_airdef) + ", time_threat: " + str(threat_coords["t"]) + " ,difference: " + str(time_diff))
-
-        if time_diff < closest_time:
-            closest_time = time_diff
-            interception_coords = coords_target_n
-            intercep_info = "time_airdef: " + str(time_airdef) + ", time_threat: " + str(threat_coords["t"]) + " ,difference: " + str(time_diff)
-
-    
-    print(interception_coords)
-    print(intercep_info)
 
     # Calculate coordinate of interception for each in range weapon in each base
     # Calculate cost for each option
+
+    interceptor_paths = []
+
+    # for base in possible_bases_weapons:
+    #     print(json.dumps(base, indent=4))
+    
+    # print(json.dumps(possible_bases_weapons, indent=4))
+
+    base_1 = possible_bases_weapons[0]
+    base_1_lat = base_1["latitude"]
+    base_1_lon = base_1["longitude"]
+
+    for intercep in base_1["defense_systems"]:
+        print(json.dumps(intercep, indent=4))
+        # Calculate coordinate of interception: 
+        # Calculate time to reach coordinate on threat path for each point on path
+        # Check if time to reach is equal or close to time of threat path point
+        # if it is the same or close, that is the solution coordinate, where target and airdef will meet
+
+        closest_time = math.inf
+        interception_coords = []
+        interc_time_airdef = 0
+        interc_time_threat = 0
+        coords_base = (base_1_lat, base_1_lon, 0)
+
+        for threat_coords in threat_path:
+            coords_target_n = (threat_coords["latitude"], threat_coords["longitude"], radar_message.altitude_m)
+            # print(coords_target_n)
+            distance_2d = distance.distance(coords_base[:2], coords_target_n[:2]).m
+            distance_3d = np.sqrt(distance_2d**2 + (coords_target_n[2] - coords_base[2])**2)
+            # print(distance_3d)
+            time_airdef = round(distance_3d/intercep["speed"], 4)
+            time_diff = np.absolute(time_airdef - threat_coords["t"])
+            # print("time_airdef: " + str(time_airdef) + ", time_threat: " + str(threat_coords["t"]) + " ,difference: " + str(time_diff))
+            if time_diff < closest_time:
+                closest_time = time_diff
+                interception_coords = coords_target_n
+                interc_time_airdef = time_airdef
+                interc_time_threat = threat_coords["t"]
+
+        # Path of interceptor
+        # Calculate x, y, z components of interceptor velocity
+        # Get difference between starting and ending coordinates and calculate speed using interc time airdef
+
+        base_intercep_coords_difference = np.array(interception_coords) - np.array(coords_base)
+        # latitude/s   longitude/s   m/s !!!
+        velocity_intercep_vector = base_intercep_coords_difference / interc_time_airdef
+        print(velocity_intercep_vector)
+        interceptor_path = []
+
+        d_time_s = TIME_DELTA 
+
+        while d_time_s <= interc_time_airdef + TIME_DELTA * 3: # Plot paths a little past interception
+            d_lat = velocity_intercep_vector[0] * d_time_s
+            d_lon = velocity_intercep_vector[1] * d_time_s
+            new_latitude = coords_base[0] + d_lat
+            new_longitude = coords_base[1] + d_lon
+
+            next_interc_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": intercep["name"], "info": str(intercep), "t": d_time_s}
+            interceptor_path.append(next_interc_loc)
+            d_time_s += TIME_DELTA
+
+        interceptor_paths.append(interceptor_path)
+
+
+
+
+
 
     # Plot
     data_points = {"latitude": [RADAR_LAT_1, RADAR_LAT_2, RADAR_LAT_3],
                     "longitude": [RADAR_LON_1, RADAR_LON_2, RADAR_LON_3],
                     "type": ["base", "base", "base"],
+                    "info": ["Riga", "Liepaja", "Daugavpils"],
                     "t": [0, 0, 0]
                     }
     df = pd.DataFrame(data=data_points)
@@ -328,7 +335,11 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     for p in threat_path:
         df.loc[len(df)] = p
 
-    fig = px.scatter_geo(df, color="type", lat="latitude", lon="longitude", scope="europe", center={'lat': RADAR_LAT_1, 'lon': RADAR_LON_1 }, hover_name="t")
+    for paths in interceptor_paths:
+        for p in paths:
+            df.loc[len(df)] = p
+
+    fig = px.scatter_geo(df, color="type", lat="latitude", lon="longitude", scope="europe", center={'lat': RADAR_LAT_1, 'lon': RADAR_LON_1 }, hover_name="t", hover_data="info")
     fig.show()
 
 
