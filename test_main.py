@@ -28,7 +28,7 @@ def client_fixture(session: Session):
     app.dependency_overrides.clear()
 
 def test_create_radar_message(session: Session, client: TestClient):
-    airdef_drone = AirDefenseSolution(name="Interceptor drone", speed=80, range=30000, max_altitude=2000, price=10000, cost_type="unit")
+    airdef_drone = AirDefenseSolution(name="Interceptor drone", speed=80, range=3000, max_altitude=2000, price=10000, cost_type="unit")
     airdef_jet = AirDefenseSolution(name="Fighter jet", speed=700, range=3500, max_altitude=15000, price=1000, cost_type="time")
     airdef_rocket= AirDefenseSolution(name="Rocket", speed=1500, range=100000, max_altitude=30000, price=300000, cost_type="unit")
     airdef_50cal = AirDefenseSolution(name="50Cal", speed=900, range=2000, max_altitude=2000, price=1, cost_type="unit")
@@ -56,7 +56,7 @@ def test_create_radar_message(session: Session, client: TestClient):
     assert response.status_code == 200
 
 def test_create_radar_message_ignore(session: Session, client: TestClient):
-    airdef_drone = AirDefenseSolution(name="Interceptor drone", speed=80, range=30000, max_altitude=2000, price=10000, cost_type="unit")
+    airdef_drone = AirDefenseSolution(name="Interceptor drone", speed=80, range=3000, max_altitude=2000, price=10000, cost_type="unit")
     airdef_jet = AirDefenseSolution(name="Fighter jet", speed=700, range=3500, max_altitude=15000, price=1000, cost_type="time")
     airdef_rocket= AirDefenseSolution(name="Rocket", speed=1500, range=100000, max_altitude=30000, price=300000, cost_type="unit")
     airdef_50cal = AirDefenseSolution(name="50Cal", speed=900, range=2000, max_altitude=2000, price=1, cost_type="unit")
@@ -87,7 +87,7 @@ def test_create_radar_message_ignore(session: Session, client: TestClient):
 
 def test_read_bases(session: Session, client: TestClient):
 
-    airdef_drone = AirDefenseSolution(name="Interceptor drone", speed=80, range=30000, max_altitude=2000, price=10000, cost_type="unit")
+    airdef_drone = AirDefenseSolution(name="Interceptor drone", speed=80, range=3000, max_altitude=2000, price=10000, cost_type="unit")
     airdef_jet = AirDefenseSolution(name="Fighter jet", speed=700, range=3500, max_altitude=15000, price=1000, cost_type="time")
     airdef_rocket= AirDefenseSolution(name="Rocket", speed=1500, range=100000, max_altitude=30000, price=300000, cost_type="unit")
     airdef_50cal = AirDefenseSolution(name="50Cal", speed=900, range=2000, max_altitude=2000, price=1, cost_type="unit")

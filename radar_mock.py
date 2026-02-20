@@ -102,62 +102,46 @@ def generate_random_radar_data():
 
 
 actionable_radar_data = [
-    # {
-    #     "speed_ms": 66.1375455, # Daugavpils only
-    #     "altitude_m": 967.7105407,
-    #     "heading_deg": 5.3396806,
-    #     "latitude": 55.7387316,
-    #     "longitude": 26.4628966,
-    #     "report_time": 1771499951
-    # },
-    # {
-    #     "speed_ms": 1993.1174281,
-    #     "altitude_m": 93.889983,
-    #     "heading_deg": 309.6579734,
-    #     "latitude": 56.2473859,
-    #     "longitude": 25.7603382,
-    #     "report_time": 1771499951
-    # },
-    # {
-    #     "speed_ms": 1555.2452674,
-    #     "altitude_m": 962.8661135,
-    #     "heading_deg": 125.1256522,
-    #     "latitude": 56.7385752,
-    #     "longitude": 20.903525,
-    #     "report_time": 1771499952
-    # },
-    # {
-    #     "speed_ms": 1040.6992789,
-    #     "altitude_m": 1206.1992131,
-    #     "heading_deg": 22.5985046,
-    #     "latitude": 56.4776878,
-    #     "longitude": 20.7670884,
-    #     "report_time": 1771501189
-    # },
-    # {
-    #     "speed_ms": 1795.9851297,
-    #     "altitude_m": 1397.2513429,
-    #     "heading_deg": 152.391817,
-    #     "latitude": 57.0570019,
-    #     "longitude": 23.6855625,
-    #     "report_time": 1771501189
-    # },
-    # {
-    #     "speed_ms": 1479.5428755,
-    #     "altitude_m": 649.5084518,
-    #     "heading_deg": 11.843851,
-    #     "latitude": 55.8735191,
-    #     "longitude": 26.8349929,
-    #     "report_time": 1771501189
-    # },
-    # {
-    #     "speed_ms": 400.2817357,
-    #     "altitude_m": 1545.690476,
-    #     "heading_deg": 286.9629606,
-    #     "latitude": 57.04575,
-    #     "longitude": 25.5451234,
-    #     "report_time": 1771501189
-    # },
+    {
+        "speed_ms": 66.1375455, # Daugavpils only
+        "altitude_m": 967.7105407,
+        "heading_deg": 5.3396806,
+        "latitude": 55.7387316,
+        "longitude": 26.4628966,
+        "report_time": 1771499951
+    },
+    {
+        "speed_ms": 1993.1174281,
+        "altitude_m": 93.889983,
+        "heading_deg": 309.6579734,
+        "latitude": 56.2473859,
+        "longitude": 25.7603382,
+        "report_time": 1771499951
+    },
+    {
+        "speed_ms": 1795.9851297,
+        "altitude_m": 1397.2513429,
+        "heading_deg": 152.391817,
+        "latitude": 57.0570019,
+        "longitude": 23.6855625,
+        "report_time": 1771501189
+    },
+    {
+        "speed_ms": 1479.5428755,
+        "altitude_m": 649.5084518,
+        "heading_deg": 11.843851,
+        "latitude": 55.8735191,
+        "longitude": 26.8349929,
+        "report_time": 1771501189
+    },
+    {
+        "speed_ms": 400.2817357,
+        "altitude_m": 1545.690476,
+        "heading_deg": 286.9629606,
+        "latitude": 57.04575,
+        "longitude": 25.5451234,
+        "report_time": 1771501189
+    },
     {
         "speed_ms": 400.2817357, # Both Riga and Daugavpils
         "altitude_m": 200.690476,

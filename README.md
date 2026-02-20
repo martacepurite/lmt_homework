@@ -36,6 +36,9 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 * Docker
 * VSCode debugger?
 * Which api endpoints are needed 
+* Do I classify the threats into what kind of weapon we think it is? Compare speed, altitude etc?
+* Variable speed for air defense solutions (can go slower)
+* Different resolution for calculations and plotting?
 * Visualize range of radars, air defense systems
 * Update radar data schema
 * floats with single precision
