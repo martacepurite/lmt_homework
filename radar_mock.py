@@ -162,21 +162,9 @@ N_THREATS = 15
 
 if __name__ == '__main__':
 
-    for n in range(N_THREATS):
+    # for n in range(N_THREATS):
 
-        d = generate_random_radar_data()
-        r = requests.post(path_radar_api, json=d)
-
-        print()
-        if r.status_code == 200:
-            print(json.dumps(d, indent=4))
-            print(json.dumps(r.json(), indent=4))
-        else:
-            print(r.text)
-
-
-
-    # for d in actionable_radar_data:
+    #     d = generate_random_radar_data()
     #     r = requests.post(path_radar_api, json=d)
 
     #     print()
@@ -185,6 +173,18 @@ if __name__ == '__main__':
     #         print(json.dumps(r.json(), indent=4))
     #     else:
     #         print(r.text)
+
+
+
+    for d in actionable_radar_data:
+        r = requests.post(path_radar_api, json=d)
+
+        print()
+        if r.status_code == 200:
+            print(json.dumps(d, indent=4))
+            print(json.dumps(r.json(), indent=4))
+        else:
+            print(r.text)
 
 
 

@@ -35,6 +35,8 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 
 * Docker
 * VSCode debugger?
+* What difference in time in interception calculations is acceptable
+* Refactor plotting as separate function
 * Display chosen air defense path differently
 * Which api endpoints are needed 
 * Variable speed for air defense solutions (can go slower)

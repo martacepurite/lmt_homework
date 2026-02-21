@@ -295,7 +295,7 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
                         longest_interc_time = threat_coords["t"]
                         
 
-            if closest_time == math.inf:
+            if closest_time > 3: # Tolerance for how close the times should be to consider it an interception
                 continue
 
             if intercep["cost_type"] == "unit":
@@ -340,13 +340,22 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     if len(response_options) < 1:
         return "No response possible"
 
+    # Choose cheapest response option
+    min_cost = math.inf
+    chosen_resp = response_options[0]
+
+    for resp in response_options:
+        if resp["cost"] < min_cost:
+            min_cost = resp["cost"]
+            chosen_resp = resp
+
     # Plot
     interc_coords_all = []
 
     for option in response_options:
         opt = {"latitude": option["interc_lat"], "longitude": option["interc_lon"], "type": option["air_def_name"], "info": str(option), "t": option["interc_time_airdef"]}
         interc_coords_all.append(opt)
-        # print(json.dumps(option, indent=4))
+        print(json.dumps(option, indent=4))
 
     df_interc_points = pd.DataFrame(data=interc_coords_all)
 
@@ -360,6 +369,7 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
 
     fig = go.Figure()
 
+    # Plot base locations
     fig.add_trace(go.Scattergeo(
         lon = df_bases['longitude'],
         lat = df_bases['latitude'],
@@ -373,7 +383,7 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
                 color = 'rgba(68, 68, 68, 0)'
             )
     )))
-
+    # Plot interception points
     fig.add_trace(go.Scattergeo(
         lon = df_interc_points['longitude'],
         lat = df_interc_points['latitude'],
@@ -405,9 +415,7 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
             text = df_object_paths['t'][0:longest_interc_time_index]
         )
     )
-
     # Marker at the start of threat path
-
     fig.add_trace(
         go.Scattergeo(
             lon = [df_object_paths['longitude'][0]],
@@ -419,9 +427,7 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
             ),  
         )
     )
-
     # Interceptor paths
-
     for paths in interceptor_paths:
         df_interceptor = pd.DataFrame(paths)
         fig.add_trace(
@@ -435,16 +441,6 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
 
     fig.update_geos(fitbounds="locations", scope="europe", showcountries=True, lataxis_showgrid=True, lonaxis_showgrid=True, resolution=50)
     fig.show()
-
-    ## TODO improve selection
-
-    min_cost = math.inf
-    chosen_resp = response_options[0]
-
-    for resp in response_options:
-        if resp["cost"] < min_cost:
-            min_cost = resp["cost"]
-            chosen_resp = resp
 
     response = Response(base=str(chosen_resp["base_name"]), type=str(chosen_resp["air_def_name"]), latitude=chosen_resp["interc_lat"], longitude=chosen_resp["interc_lon"])
 
