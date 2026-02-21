@@ -23,7 +23,7 @@ RADAR_LON_2 = 21.0182217849017
 RADAR_LAT_3 = 55.87409588616014
 RADAR_LON_3 = 26.51864225209475
 
-TIME_DELTA = 10 # step for calculations, in seconds
+TIME_DELTA = 5 # step for calculations, in seconds
 MAX_TIME = 1000 # how far in time to calculate, in seconds
 
 
@@ -262,71 +262,62 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
         base_lon = base["longitude"]
         # Iterate weapons in base
         for intercep in base["defense_systems"]:
-            # print(json.dumps(intercep, indent=4))
-            # Calculate coordinate of interception: 
-            # Calculate time to reach coordinate on threat path for each point on path
-            # Check if time to reach is equal or close to time of threat path point
-            # if it is the same or close, that is the solution coordinate, where target and airdef will meet
-            closest_time = math.inf
             interception_coords = []
-            interc_time_airdef = 0
             interc_time_threat = 0
             coords_base = (base_lat, base_lon, 0)
-            interception_path_distance = 0
             interception_cost = 0
+            optimal_velocity_interc = math.inf
 
-            for threat_coords in threat_path:
+            closest_distance_to_base = math.inf
+
+            for threat_coords in threat_path[1:]:
                 coords_target_n = (threat_coords["latitude"], threat_coords["longitude"], radar_message.altitude_m)
                 distance_2d = distance.distance(coords_base[:2], coords_target_n[:2]).m
                 distance_3d = np.sqrt(distance_2d**2 + (coords_target_n[2] - coords_base[2])**2)
 
-                if distance_3d > intercep["range"]:
-                    continue
-                
-                time_airdef = round(distance_3d/intercep["speed"], 4)
-                time_diff = np.absolute(time_airdef - threat_coords["t"])
-                if time_diff < closest_time:
-                    closest_time = time_diff
-                    interception_coords = coords_target_n
-                    interc_time_airdef = time_airdef
-                    interc_time_threat = threat_coords["t"]
-                    interception_path_distance = distance_3d
-                    if threat_coords["t"] > longest_interc_time:
-                        longest_interc_time = threat_coords["t"]
-                        
+                if distance_3d < closest_distance_to_base:
+                    if distance_3d/threat_coords["t"] <= intercep["speed"]:
+                        closest_distance_to_base = distance_3d 
+                        interc_time_threat = threat_coords["t"]
+                        interception_coords = coords_target_n
+                        if threat_coords["t"] > longest_interc_time:
+                            longest_interc_time = threat_coords["t"]
 
-            if closest_time > 3: # Tolerance for how close the times should be to consider it an interception
+            if closest_distance_to_base > intercep["range"]:
                 continue
+
+            optimal_velocity_interc = closest_distance_to_base/interc_time_threat
 
             if intercep["cost_type"] == "unit":
                 interception_cost = intercep["price"]
             else:
-                interception_cost = intercep["price"] * interception_path_distance
+                interception_cost = intercep["price"] * interc_time_threat
 
             response_details = {
+                "response_id": len(response_options) + 1,
                 "base_id": base["id"],
                 "base_name": base["name"],
                 "air_def_id": intercep["id"],
                 "air_def_name": intercep["name"],
                 "cost": interception_cost,
-                "distance": interception_path_distance,
-                "interc_time_airdef": interc_time_airdef,
-                "time_diff": closest_time,
+                "distance": closest_distance_to_base,
+                "interc_time": interc_time_threat,
                 "interc_lat": interception_coords[0],
                 "interc_lon": interception_coords[1],
+                "speed": optimal_velocity_interc
             }
 
             response_options.append(response_details)
             # FOR PLOTTING PATH
             # Path of interceptor
             # Calculate x, y, z components of interceptor velocity
-            # Get difference between starting and ending coordinates and calculate speed using interc time airdef
+            # Get difference between starting and ending coordinates and calculate speed
             base_intercep_coords_difference = np.array(interception_coords) - np.array(coords_base)
             # latitude/s   longitude/s   m/s !!!
-            velocity_intercep_vector = base_intercep_coords_difference / interc_time_airdef
+            velocity_intercep_vector = base_intercep_coords_difference / interc_time_threat
             interceptor_path = []
             d_time_s = 0 
-            while d_time_s <= interc_time_airdef + TIME_DELTA * 3: # Plot paths a little past interception
+            while d_time_s <= interc_time_threat + TIME_DELTA * 3: # Plot paths a little past interception
                 d_lat = velocity_intercep_vector[0] * d_time_s
                 d_lon = velocity_intercep_vector[1] * d_time_s
                 new_latitude = coords_base[0] + d_lat
@@ -343,21 +334,22 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     # Choose cheapest response option
     min_cost = math.inf
     chosen_resp = response_options[0]
-
     for resp in response_options:
         if resp["cost"] < min_cost:
             min_cost = resp["cost"]
             chosen_resp = resp
 
     # Plot
-    interc_coords_all = []
+    # interc_coords_all = []
 
-    for option in response_options:
-        opt = {"latitude": option["interc_lat"], "longitude": option["interc_lon"], "type": option["air_def_name"], "info": str(option), "t": option["interc_time_airdef"]}
-        interc_coords_all.append(opt)
-        print(json.dumps(option, indent=4))
+    # for option in response_options:
+    #     print(json.dumps(option, indent=4))
+    #     if option["response_id"] == chosen_resp["response_id"]:
+    #         continue
+    #     opt = {"latitude": option["interc_lat"], "longitude": option["interc_lon"], "type": option["air_def_name"], "info": str(option), "t": option["interc_time"]}
+    #     interc_coords_all.append(opt)
 
-    df_interc_points = pd.DataFrame(data=interc_coords_all)
+    # df_interc_points = pd.dataframe(data=interc_coords_all)
 
     data_points_bases = {"latitude": [RADAR_LAT_1, RADAR_LAT_2, RADAR_LAT_3],
                     "longitude": [RADAR_LON_1, RADAR_LON_2, RADAR_LON_3],
@@ -375,6 +367,7 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
         lat = df_bases['latitude'],
         text = df_bases['info'],
         mode = 'markers',
+        name = "Base",
         marker = dict(
             size = 15,
             color = 'rgb(0, 255, 0)',
@@ -383,15 +376,36 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
                 color = 'rgba(68, 68, 68, 0)'
             )
     )))
-    # Plot interception points
+    # Plot interception points (not chosen)
+    # if len(df_interc_points) > 0
+    #     fig.add_trace(go.Scattergeo(
+    #         lon = df_interc_points['longitude'],
+    #         lat = df_interc_points['latitude'],
+    #         text = df_interc_points['info'],
+    #         mode = 'markers',
+    #         marker = dict(
+    #             size = 10,
+    #             color = 'rgb(255, 0, 0)',
+    #             symbol = "x",
+    #             line = dict(
+    #                 width = 3,
+    #                 color = 'rgba(68, 68, 68, 0)'
+    #             )
+    #     )))
+
+    chosen_point_data = []
+    pt = {"latitude": chosen_resp["interc_lat"], "longitude": chosen_resp["interc_lon"], "type": chosen_resp["air_def_name"], "info": str(chosen_resp), "t": chosen_resp["interc_time"]}
+    chosen_point_data.append(pt)
+    df_chosen_point = pd.DataFrame(data=chosen_point_data)
+
     fig.add_trace(go.Scattergeo(
-        lon = df_interc_points['longitude'],
-        lat = df_interc_points['latitude'],
-        text = df_interc_points['info'],
+        lon = df_chosen_point['longitude'],
+        lat = df_chosen_point['latitude'],
+        text = df_chosen_point['info'],
+        name = "Interception point",
         mode = 'markers',
         marker = dict(
-            size = 10,
-            color = 'rgb(255, 0, 0)',
+            size = 12,
             symbol = "x",
             line = dict(
                 width = 3,
@@ -412,7 +426,8 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
             lat = df_object_paths['latitude'][0:longest_interc_time_index+1],
             mode = 'lines',
             line = dict(width = 2,color = 'red'),
-            text = df_object_paths['t'][0:longest_interc_time_index]
+            text = df_object_paths['t'][0:longest_interc_time_index+1],
+            name = "Threat"
         )
     )
     # Marker at the start of threat path
@@ -421,6 +436,7 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
             lon = [df_object_paths['longitude'][0]],
             lat = [df_object_paths['latitude'][0]],
             mode = 'markers',
+            name = "Detection coordinate",
             marker=dict(
                 size=10,
                 color = 'rgb(255, 0, 0)',
@@ -432,14 +448,16 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
         df_interceptor = pd.DataFrame(paths)
         fig.add_trace(
             go.Scattergeo(
-                lon = [df_interceptor['longitude'][0], df_interceptor['longitude'][len(df_interceptor) - 1]],
-                lat = [df_interceptor['latitude'][0], df_interceptor['latitude'][len(df_interceptor) - 1]],
+                lon = df_interceptor['longitude'],
+                lat = df_interceptor['latitude'],
                 mode = 'lines',
                 line = dict(width = 2,color = 'blue'),
+                text = df_interceptor['info']
             )
         )
 
     fig.update_geos(fitbounds="locations", scope="europe", showcountries=True, lataxis_showgrid=True, lonaxis_showgrid=True, resolution=50)
+    fig.update_layout(hoverdistance=100)
     fig.show()
 
     response = Response(base=str(chosen_resp["base_name"]), type=str(chosen_resp["air_def_name"]), latitude=chosen_resp["interc_lat"], longitude=chosen_resp["interc_lon"])
