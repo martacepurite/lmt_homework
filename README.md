@@ -9,6 +9,12 @@ pip install -r requirements.txt
 
 fastapi dev main.py
 
+## Run using Docker
+
+docker build -t python-imagename .
+
+docker run python-imagename
+
 
 ## Run tests
 
