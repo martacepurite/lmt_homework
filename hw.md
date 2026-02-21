@@ -32,7 +32,7 @@ You have to build a threat classification and interception application. You know
 
 You also know that Latvia has 4 types of air defense solutions
 
-1. Interceptor drone, Speed 80 m/s, range of operations: 30 000 m,  max altitude 2000 m, price: 10 000 EUR
+1. Interceptor drone, Speed 80 m/s, range of operations: 3000 m,  max altitude 2000 m, price: 10 000 EUR
 2. Fighter jet, Speed 700 m/s, range of operations  3500 m, max altitude 15 000 m, price per minute 1 000 EUR
 3. Rocket, Speed 1500 m/s, range of operations 100 000 m, max altitude 30 000 m, price 300 000 EUR
 4. 50Cal, Speed 900 m/s, range of operations 2000 m, max altitude 2000 m, price 1 eur per shot

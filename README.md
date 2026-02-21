@@ -35,17 +35,13 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 
 * Docker
 * VSCode debugger?
+* Display chosen air defense path differently
 * Which api endpoints are needed 
-* Do I classify the threats into what kind of weapon we think it is? Compare speed, altitude etc?
 * Variable speed for air defense solutions (can go slower)
-* Different resolution for calculations and plotting?
-* Visualize range of radars, air defense systems
 * Update radar data schema
 * floats with single precision
 * Error handling
 * More tests
-* Cost calculation algorithm
-* Radar record_id and trajectory_id? Does this mean we may get updates for the same object (though these did not appear in sample data)
 * Animations?
 * Prioritising algorithm to make quicker decisions if target is high danger (fast)
 * Triage algorithm 
