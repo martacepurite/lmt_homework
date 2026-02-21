@@ -7,13 +7,23 @@ source venv/bin/activate
 
 pip install -r requirements.txt
 
-fastapi dev main.py
+fastapi dev app/main.py
+
+## Run mock radar
+
+python test/radar_mock.py
 
 ## Run using Docker
 
-docker build -t python-imagename .
+docker build -t python-app ./app
 
-docker run python-imagename
+docker run -p 8000:8000 python-app fastapi run main.py --port 8000
+
+docker run -p 8000:8000 python-app pytest
+
+
+
+docker build -t python-mock ./mock
 
 
 ## Run tests
@@ -39,13 +49,11 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 
 ## TODO/ideas
 
-* Docker
+* Docker compose
+* Different docker? for test/demo and prod (just api)
 * VSCode debugger?
-* What difference in time in interception calculations is acceptable
 * Refactor plotting as separate function
-* Display chosen air defense path differently
 * Which api endpoints are needed 
-* Variable speed for air defense solutions (can go slower)
 * Update radar data schema
 * floats with single precision
 * Error handling

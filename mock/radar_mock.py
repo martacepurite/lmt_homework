@@ -49,7 +49,8 @@ RADAR_LON_3 = 26.51864225209475
 # 200km = 1.80874 deg/km
 
 
-path_radar_api = "http://127.0.0.1:8000/radar/"
+# path_radar_api = "http://127.0.0.1:8000/radar/"
+path_radar_api = "http://app:8000/radar/"
 
 # random.seed(10)
 

@@ -150,18 +150,11 @@ def process_radar_data(radar_message: RadarMessage, session: SessionDep):
     return Classification.THREAT
 
 
-# Target needs to be within range 
-# Calculate cost
-# Prefer cheapest 
-
 def get_threat_response(radar_message: RadarMessage, session: SessionDep):
-    # print()
-    # print(json.dumps(radar_message.model_dump(), indent=4))
-    # print()
-
     all_bases = session.exec(select(Base)).all()
 
     # Get target distance from each base
+    # OLD, REMOVE
     coords_target = (radar_message.latitude, radar_message.longitude, radar_message.altitude_m)
     coords_target_vec = [radar_message.latitude, radar_message.longitude, radar_message.altitude_m]
     bases_distances = {}
