@@ -40,7 +40,9 @@ class RadarMessage(BaseModel):
     heading_deg: float
     latitude: float
     longitude: float
-    report_time: float
+    report_time: int
+    record_id: str | None = None 
+    trajectory_id: str | None = None
 
 class Response(BaseModel):
     base: str

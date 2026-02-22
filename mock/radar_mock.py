@@ -7,6 +7,9 @@ import numpy as np
 import plotly.express as px
 import pandas as pd
 import plotly.graph_objects as go
+import os
+import uuid
+
 
 MIN_HEADING_DEG = 0
 MAX_HEADING_DEG = 360
@@ -49,8 +52,8 @@ RADAR_LON_3 = 26.51864225209475
 # 200km = 1.80874 deg/km
 
 
-# path_radar_api = "http://127.0.0.1:8000/radar/"
-path_radar_api = "http://app:8000/radar/"
+path_radar_api  = os.getenv("PATH_RADAR_API", "http://127.0.0.1:8000/radar/")
+# path_radar_api = "http://app:8000/radar/"
 
 # random.seed(10)
 
@@ -88,7 +91,8 @@ def generate_random_radar_data():
     heading_deg = round(random.uniform(MIN_HEADING_DEG, MAX_HEADING_DEG), 7)
     latitude = round(random.uniform(lat_min, lat_max), 7)
     longitude = round(random.uniform(lon_min, lon_max), 7)
-    report_time = round(time.time())
+    report_time = int(time.time())
+    record_id = str(uuid.uuid4())[:8]
 
     data = {
         "speed_ms": speed_ms,
@@ -96,7 +100,8 @@ def generate_random_radar_data():
         "heading_deg": heading_deg,
         "latitude": latitude,
         "longitude": longitude,
-        "report_time": report_time
+        "report_time": report_time,
+        "record_id": record_id
     }
 
     return data
@@ -109,7 +114,8 @@ actionable_radar_data = [
         "heading_deg": 5.3396806,
         "latitude": 55.7387316,
         "longitude": 26.4628966,
-        "report_time": 1771499951
+        "report_time": 1771499951,
+        "record_id": "bb76924e"
     },
     {
         "speed_ms": 1993.1174281,
@@ -117,7 +123,8 @@ actionable_radar_data = [
         "heading_deg": 309.6579734,
         "latitude": 56.2473859,
         "longitude": 25.7603382,
-        "report_time": 1771499951
+        "report_time": 1771499951,
+        "record_id": "00c52183"
     },
     {
         "speed_ms": 1795.9851297,
@@ -125,7 +132,8 @@ actionable_radar_data = [
         "heading_deg": 152.391817,
         "latitude": 57.0570019,
         "longitude": 23.6855625,
-        "report_time": 1771501189
+        "report_time": 1771501189,
+        "record_id": "28c037eb"
     },
     {
         "speed_ms": 1479.5428755,
@@ -133,7 +141,8 @@ actionable_radar_data = [
         "heading_deg": 11.843851,
         "latitude": 55.8735191,
         "longitude": 26.8349929,
-        "report_time": 1771501189
+        "report_time": 1771501189,
+        "record_id": "725ce6b4"
     },
     {
         "speed_ms": 400.2817357,
@@ -141,7 +150,8 @@ actionable_radar_data = [
         "heading_deg": 286.9629606,
         "latitude": 57.04575,
         "longitude": 25.5451234,
-        "report_time": 1771501189
+        "report_time": 1771501189,
+        "record_id": "f9f88b97"
     },
     {
         "speed_ms": 400.2817357, # Both Riga and Daugavpils
@@ -149,7 +159,8 @@ actionable_radar_data = [
         "heading_deg": 286.9629606,
         "latitude": 56.489357,
         "longitude": 25.368585,
-        "report_time": 1771501189
+        "report_time": 1771501189,
+        "record_id": "b214e984"
     }
 
 ]
@@ -178,6 +189,7 @@ if __name__ == '__main__':
 
 
     for d in actionable_radar_data:
+        
         r = requests.post(path_radar_api, json=d)
 
         print()

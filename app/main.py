@@ -12,6 +12,8 @@ import json
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
+import uuid
 
 from .definitions import AirDefenseSolution, Base, RadarMessage, Classification, Response
 RADAR_LAT_1 = 56.97475845607155
@@ -449,9 +451,25 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
             )
         )
 
+    # print(pio.renderers)
+
     fig.update_geos(fitbounds="locations", scope="europe", showcountries=True, lataxis_showgrid=True, lonaxis_showgrid=True, resolution=50)
     fig.update_layout(hoverdistance=100)
-    fig.show()
+
+    filename = "./plots/plot"
+
+    if not os.path.exists("./plots"):
+        os.makedirs("./plots")
+
+
+    if "record_id" in radar_message.model_dump().keys():
+        filename = filename + "_" + radar_message.record_id
+    else:
+        filename = filename + "_" + str(uuid.uuid4())[:8]
+
+    filename = filename + ".html"
+
+    fig.write_html(filename)
 
     response = Response(base=str(chosen_resp["base_name"]), type=str(chosen_resp["air_def_name"]), latitude=chosen_resp["interc_lat"], longitude=chosen_resp["interc_lon"])
 
