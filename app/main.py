@@ -14,6 +14,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 import uuid
+import uvicorn
 
 from .definitions import AirDefenseSolution, Base, RadarMessage, Classification, Response
 RADAR_LAT_1 = 56.97475845607155
@@ -28,8 +29,8 @@ RADAR_LON_3 = 26.51864225209475
 TIME_DELTA = 5 # step for calculations, in seconds
 MAX_TIME = 1000 # how far in time to calculate, in seconds
 
+PLOT = os.getenv("PLOT", "browser")
 
-# from definitions import CostType, BaseAirDefenseLink, AirDefenseSolution, Base, RadarMessage
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -456,21 +457,24 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
     fig.update_geos(fitbounds="locations", scope="europe", showcountries=True, lataxis_showgrid=True, lonaxis_showgrid=True, resolution=50)
     fig.update_layout(hoverdistance=100)
 
-    filename = "./plots/plot"
+    if PLOT == "browser":
+        fig.show()
+    elif PLOT == "html":
+        filename = "./plots/plot"
+        if not os.path.exists("./plots"):
+            os.makedirs("./plots")
 
-    if not os.path.exists("./plots"):
-        os.makedirs("./plots")
+        if "record_id" in radar_message.model_dump().keys():
+            filename = filename + "_" + radar_message.record_id
+        else:
+            filename = filename + "_" + str(uuid.uuid4())[:8]
 
-
-    if "record_id" in radar_message.model_dump().keys():
-        filename = filename + "_" + radar_message.record_id
-    else:
-        filename = filename + "_" + str(uuid.uuid4())[:8]
-
-    filename = filename + ".html"
-
-    fig.write_html(filename)
+        filename = filename + ".html"
+        fig.write_html(filename)
 
     response = Response(base=str(chosen_resp["base_name"]), type=str(chosen_resp["air_def_name"]), latitude=chosen_resp["interc_lat"], longitude=chosen_resp["interc_lon"])
 
     return response
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

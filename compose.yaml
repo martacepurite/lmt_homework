@@ -18,6 +18,8 @@ services:
       - type: bind
         source: ./plots
         target: /code/plots
+    environment:
+      PLOT: "html"
 
   mock:
     build:

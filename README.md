@@ -54,11 +54,12 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 
 ## TODO/ideas
 
+* Dockerize development
+* Different options for running mock, tests etc on docker run (env vars or args somehow?)
 * Improve README
 * VSCode debugger?
-* Refactor plotting as separate function
+* Refactor plotting as separate function, option to turn plot off
 * Which api endpoints are needed 
-* Update radar data schema
 * floats with single precision
 * Error handling
 * More tests
