@@ -1,4 +1,4 @@
-
+## Setup
 ### Dev setup 
 
 python3 -m venv venv
@@ -9,9 +9,14 @@ pip install -r requirements.txt
 
 fastapi dev app/main.py
 
+
 ## Run mock radar
 
-python test/radar_mock.py
+python mock/radar_mock.py
+
+## Run using Docker Compose
+
+docker compose up
 
 ## Run using Docker
 
@@ -49,8 +54,7 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 
 ## TODO/ideas
 
-* Docker compose
-* Different docker? for test/demo and prod (just api)
+* Improve README
 * VSCode debugger?
 * Refactor plotting as separate function
 * Which api endpoints are needed 
