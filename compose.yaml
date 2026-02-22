@@ -19,6 +19,7 @@ services:
         source: ./plots
         target: /code/plots
     environment:
+      # PLOT: "none"
       PLOT: "html"
 
   mock:
