@@ -58,7 +58,6 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 * Different options for running mock, tests etc on docker run (env vars or args somehow?)
 * Improve README
 * VSCode debugger?
-* Refactor plotting as separate function, option to turn plot off
 * Which api endpoints are needed 
 * floats with single precision
 * Error handling

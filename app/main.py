@@ -79,7 +79,7 @@ def on_shutdown():
 
 
 @app.post("/radar/")
-def create_radar_message(message: RadarMessage, session: SessionDep):
+def post_radar_message(message: RadarMessage, session: SessionDep):
     classification = process_radar_data(message, session)
 
     if classification == Classification.CAUTION or classification == Classification.IGNORE:
@@ -93,49 +93,8 @@ def create_radar_message(message: RadarMessage, session: SessionDep):
         )
     return response 
 
-@app.post("/bases/")
-def create_base(base: Base, session: SessionDep) -> Base:
-    session.add(base)
-    session.commit()
-    session.refresh(base)
-    return base
-
-@app.get("/bases/")
-def read_bases(
-    session: SessionDep,
-    offset: int = 0,
-    limit: Annotated[int, Query(le=100)] = 100,
-) -> list[Base]:
-    bases = session.exec(select(Base).offset(offset).limit(limit)).all()
-    return bases
-
-@app.get("/airdefense/")
-def read_airdefense(
-    session: SessionDep,
-    offset: int = 0,
-    limit: Annotated[int, Query(le=100)] = 100,
-) -> list[AirDefenseSolution]:
-    airdefensesolutions = session.exec(select(AirDefenseSolution).offset(offset).limit(limit)).all()
-    return airdefensesolutions
-
-@app.get("/bases/{base_id}")
-def read_base(base_id: int, session: SessionDep) -> Base:
-    base = session.get(Base, base_id)
-    if not base:
-        raise HTTPException(status_code=404, detail="base not found")
-    return base
-
-@app.delete("/bases/{base_id}")
-def delete_base(base_id: int, session: SessionDep):
-    base = session.get(Base, base_id)
-    if not base:
-        raise HTTPException(status_code=404, detail="base not found")
-    session.delete(base)
-    session.commit()
-    return {"ok": True}
 
 def process_radar_data(radar_message: RadarMessage, session: SessionDep):
-
     # Add error handling
     radar_dict = radar_message.model_dump()
 
@@ -255,12 +214,29 @@ def plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths,
             # filename = filename + "_" + str(uuid.uuid4())[:8]
         fig.write_html(filename)
 
+def calculate_object_path(start_latitude, start_longitude, d_time, max_time, object_speed, heading_deg, info_text):
+    # Vx = V0*cos(θ)
+    # Vy = V0*sin(θ)
+    theta = 90 - (heading_deg % 180) # angle relative to x axis
+    target_velocity_x = object_speed * math.cos(math.radians(theta))
+    target_velocity_y = object_speed * math.sin(math.radians(theta))
+    # Calculate next positions of target
+    # Calculate distance traveled in x and y directions
+    r_earth = 6378000 # m
+    object_path = []
+
+    for time_s in range(0,max_time, d_time):
+        dx = target_velocity_x * time_s
+        dy = target_velocity_y * time_s
+        # check for mistakes wrt units - radians
+        new_latitude  = start_latitude + (dy / r_earth) * (180 / math.pi)
+        new_longitude = start_longitude + (dx / r_earth) * (180 / math.pi) / math.cos(new_latitude * math.pi/180)
+        next_targ_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": "threat", "info": str(info_text), "t": time_s}
+        object_path.append(next_targ_loc)
+    
+    return object_path
 
 
-
-
-
-# def plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths, record_id):
 
 def get_threat_response(radar_message: RadarMessage, session: SessionDep):
 
@@ -287,44 +263,17 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
         # TODO better handling
         return "No response possible"
 
-    # Calculate distances componentwise separately for each axis
-    # Calculate x and y components of target velocity, needs heading degrees
-    # need to account for sign/direction, check later
-    # Vx = V0*cos(θ)
-    # Vy = V0*sin(θ)
-
-    theta = 90 - (radar_message.heading_deg % 180) # angle relative to x axis
-    target_velocity_x = target_speed * math.cos(math.radians(theta))
-    target_velocity_y = target_speed * math.sin(math.radians(theta))
-
-    # Calculate next positions of target
-    # Calculate distance traveled in x and y directions
-
-    r_earth = 6378000 # m
-    targ_lat = coords_target_vec[0]
-    targ_lon = coords_target_vec[1]
-    threat_path = []
-
-    for time_s in range(0,MAX_TIME, TIME_DELTA):
-        dx = target_velocity_x * time_s
-        dy = target_velocity_y * time_s
-        # check for mistakes wrt units - radians
-        new_latitude  = targ_lat + (dy / r_earth) * (180 / math.pi)
-        new_longitude = targ_lon + (dx / r_earth) * (180 / math.pi) / math.cos(targ_lat * math.pi/180)
-        next_targ_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": "threat", "info": str(radar_data_dict), "t": time_s}
-        threat_path.append(next_targ_loc)
+    threat_path = calculate_object_path(coords_target_vec[0], coords_target_vec[1], TIME_DELTA, MAX_TIME, target_speed, radar_message.heading_deg, str(radar_data_dict))
     
     # Calculate coordinate of interception for each in range weapon in each base
     # Calculate cost for each option
 
     interceptor_paths = []
-    # print(json.dumps(possible_bases_weapons, indent=4))
     response_options = []
     longest_interc_time = 0 # For plotting threat path (where to end it)
 
     # Iterate bases with possible weapons
     for base in possible_bases_weapons:
-        # print(json.dumps(base, indent=4))
         base_lat = base["latitude"]
         base_lon = base["longitude"]
         # Iterate weapons in base
@@ -334,7 +283,6 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
             coords_base = (base_lat, base_lon, 0)
             interception_cost = 0
             optimal_velocity_interc = math.inf
-
             closest_distance_to_base = math.inf
 
             for threat_coords in threat_path[1:]:
@@ -412,7 +360,6 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
         if "record_id" in radar_data_dict.keys():
             record_id = radar_data_dict["record_id"]
         plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths, record_id)
-
 
     response = Response(base=str(chosen_resp["base_name"]), type=str(chosen_resp["air_def_name"]), latitude=chosen_resp["interc_lat"], longitude=chosen_resp["interc_lon"])
 
