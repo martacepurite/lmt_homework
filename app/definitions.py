@@ -1,15 +1,13 @@
-from typing import Annotated
-from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
-import sqlite3
-from enum import Enum
+from enum import StrEnum
 from pydantic import BaseModel
 
 
-class Classification(Enum):
+class Classification(StrEnum):
     THREAT = "Threat"
     CAUTION = "Caution"
-    IGNORE = "Not a threat or caution"
+    IGNORE = "Object is not classified as a threat or caution"
+    IMPOSSIBLE = "Object is a threat but cannot be intercepted"
 
 class BaseAirDefenseLink(SQLModel, table=True):
     base_id: int | None = Field(default=None, foreign_key="base.id", primary_key=True)
@@ -49,3 +47,6 @@ class Response(BaseModel):
     type: str
     latitude: float
     longitude: float
+
+class NoActionResponse(BaseModel):
+    message: str

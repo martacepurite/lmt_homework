@@ -3,10 +3,6 @@ import random
 import time
 import json
 import math
-import numpy as np
-import plotly.express as px
-import pandas as pd
-import plotly.graph_objects as go
 import os
 import uuid
 
@@ -16,9 +12,7 @@ MAX_HEADING_DEG = 360
 MIN_SPEED_MS = 1
 MAX_SPEED_MS = 2000
 MIN_ALTITUDE_M = 5
-# Lower than 200km so as not to pick up spacecraft (? unclear)
-# MAX_ALTITUDE_M = 2000
-MAX_ALTITUDE_M = 500
+MAX_ALTITUDE_M = 2000
 
 MIN_LATITUDE_GLOBAL = -90
 MAX_LATITUDE_GLOBAL = 90
@@ -53,7 +47,6 @@ RADAR_LON_3 = 26.51864225209475
 
 
 path_radar_api  = os.getenv("PATH_RADAR_API", "http://127.0.0.1:8000/radar/")
-# path_radar_api = "http://app:8000/radar/"
 
 # random.seed(10)
 
@@ -186,55 +179,14 @@ if __name__ == '__main__':
     #     else:
     #         print(r.text)
 
-
-
     for d in actionable_radar_data:
         
         r = requests.post(path_radar_api, json=d)
 
         print()
         if r.status_code == 200:
-            print(json.dumps(d, indent=4))
+            # print(json.dumps(d, indent=4))
             print(json.dumps(r.json(), indent=4))
         else:
             print(r.text)
-
-
-
-    # Plot bases
-    # data_points = {"latitude": [RADAR_LAT_1, RADAR_LAT_2, RADAR_LAT_3],
-    #                 "longitude": [RADAR_LON_1, RADAR_LON_2, RADAR_LON_3],
-    #                 "type": ["base", "base", "base"],
-    #                 "range": [200, 100, 100]}
-    # df = pd.DataFrame(data=data_points)
-
-    # for n in range(N_THREATS):
-
-    #     d1 = generate_random_radar_data()
-    #     threat = {"latitude": d1["latitude"], "longitude": d1["longitude"], "type": "threat", "range": 50}
-    #     df.loc[len(df)] = threat
-
-    # # threat = {"latitude": d1["latitude"], "longitude": d1["longitude"], "type": "threat"}
-
-    # # df.loc[len(df)] = threat
-    # colors=('#1e90ff','#ff8c00','#2e8b57', '#1e90ff','#fa9cff','#4f7b57')
-
-    # fig = go.Figure(data=go.Scattergeo(
-    #     lon = df['longitude'],
-    #     lat = df['latitude'],
-    #     text = df['type'],
-    #     mode = 'markers',
-    #     marker_color = colors,
-    #     marker = dict(
-    #         size = 8,
-    #         opacity = 0.8,
-    #         symbol = 'square',
-    #     )))
-
-    # # fig.update_layout()
-    # fig.update_geos(fitbounds="locations", scope="europe", showcountries=True, lataxis_showgrid=True, lonaxis_showgrid=True, resolution=50)
-
-
-    # fig = px.scatter_geo(df, color="type", lat="latitude", lon="longitude", scope="europe", center={'lat': RADAR_LAT_1, 'lon': RADAR_LON_1 }, size="range")
-    # fig.show()
 

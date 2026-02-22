@@ -1,22 +1,16 @@
-from typing import Annotated
+from typing import Annotated, Union
 from fastapi import Depends, FastAPI, HTTPException, Query, status
-from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
-import sqlite3
-from enum import Enum
-from pydantic import BaseModel
+from sqlmodel import Session, SQLModel, create_engine, select
 import os
 from geopy import distance
 import math
 import numpy as np
-import json
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
-import plotly.io as pio
 import uuid
 import uvicorn
 
-from .definitions import AirDefenseSolution, Base, RadarMessage, Classification, Response
+from .definitions import AirDefenseSolution, Base, RadarMessage, Classification, Response, NoActionResponse
 
 RADAR_LAT_1 = 56.97475845607155
 RADAR_LON_1 = 24.1670070219384
@@ -31,6 +25,9 @@ TIME_DELTA = 5 # step for calculations, in seconds
 MAX_TIME = 1000 # how far in time to calculate, in seconds
 
 PLOT = os.getenv("PLOT", "browser")
+
+if os.environ.get("PYTEST_VERSION") is not None:
+    PLOT = "none"
 
 
 sqlite_file_name = "database.db"
@@ -79,19 +76,18 @@ def on_shutdown():
 
 
 @app.post("/radar/")
-def post_radar_message(message: RadarMessage, session: SessionDep):
+def post_radar_message(message: RadarMessage, session: SessionDep) -> Union[Response, NoActionResponse]:
     classification = process_radar_data(message, session)
 
     if classification == Classification.CAUTION or classification == Classification.IGNORE:
-        return classification
+        return NoActionResponse(message=classification.value)
 
     response = get_threat_response(message, session)
-    if not isinstance(response, Response):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(response)
-        )
-    return response 
+
+    if response == Classification.IMPOSSIBLE:
+        return NoActionResponse(message=response.value)
+
+    return response
 
 
 def process_radar_data(radar_message: RadarMessage, session: SessionDep):
@@ -111,6 +107,157 @@ def process_radar_data(radar_message: RadarMessage, session: SessionDep):
         return Classification.CAUTION
 
     return Classification.THREAT
+
+
+def calculate_object_path(start_latitude, start_longitude, d_time, max_time, object_speed, heading_deg, info_text):
+    # Vx = V0*cos(θ)
+    # Vy = V0*sin(θ)
+    theta = 90 - (heading_deg % 180) # angle relative to x axis
+    target_velocity_x = object_speed * math.cos(math.radians(theta))
+    target_velocity_y = object_speed * math.sin(math.radians(theta))
+    # Calculate next positions of target
+    # Calculate distance traveled in x and y directions
+    r_earth = 6378000 # m
+    object_path = []
+
+    for time_s in range(0,max_time, d_time):
+        dx = target_velocity_x * time_s
+        dy = target_velocity_y * time_s
+        # check for mistakes wrt units - radians
+        new_latitude  = start_latitude + (dy / r_earth) * (180 / math.pi)
+        new_longitude = start_longitude + (dx / r_earth) * (180 / math.pi) / math.cos(new_latitude * math.pi/180)
+        next_targ_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": "threat", "info": str(info_text), "t": time_s}
+        object_path.append(next_targ_loc)
+    
+    return object_path
+
+
+def get_threat_response(radar_message: RadarMessage, session: SessionDep):
+
+    all_bases = session.exec(select(Base)).all()
+    coords_target_vec = [radar_message.latitude, radar_message.longitude, radar_message.altitude_m]
+    radar_data_dict = radar_message.model_dump()
+    target_speed = radar_message.speed_ms
+    target_altitude = radar_message.altitude_m
+    # Get weapons in each base that have max alt to reach target
+
+    possible_bases_weapons = []
+    for b in all_bases:
+        base_dict = b.model_dump()
+        in_range_weapons = []
+        for a in b.airdefense:
+            if a.max_altitude >= target_altitude:
+                in_range_weapons.append(a.model_dump())
+
+        if len(in_range_weapons) > 0:
+            base_dict["defense_systems"] = in_range_weapons
+            possible_bases_weapons.append(base_dict)
+
+    if len(possible_bases_weapons) < 1:
+        return Classification.IMPOSSIBLE
+
+    threat_path = calculate_object_path(coords_target_vec[0], coords_target_vec[1], TIME_DELTA, MAX_TIME, target_speed, radar_message.heading_deg, str(radar_data_dict))
+    
+    # Calculate coordinate of interception for each in range weapon in each base
+    # Calculate cost for each option
+
+    interceptor_paths = []
+    response_options = []
+    longest_interc_time = 0 # For plotting threat path (where to end it)
+
+    # Iterate bases with possible weapons
+    for base in possible_bases_weapons:
+        base_lat = base["latitude"]
+        base_lon = base["longitude"]
+        # Iterate weapons in base
+        for intercep in base["defense_systems"]:
+            interception_coords = []
+            interc_time_threat = 0
+            coords_base = (base_lat, base_lon, 0)
+            interception_cost = 0
+            optimal_velocity_interc = math.inf
+            closest_distance_to_base = math.inf
+
+            for threat_coords in threat_path[1:]:
+                coords_target_n = (threat_coords["latitude"], threat_coords["longitude"], radar_message.altitude_m)
+                distance_2d = distance.distance(coords_base[:2], coords_target_n[:2]).m
+                distance_3d = np.sqrt(distance_2d**2 + (coords_target_n[2] - coords_base[2])**2)
+
+                if distance_3d < closest_distance_to_base:
+                    if distance_3d/threat_coords["t"] <= intercep["speed"]:
+                        closest_distance_to_base = distance_3d 
+                        interc_time_threat = threat_coords["t"]
+                        interception_coords = coords_target_n
+                        if threat_coords["t"] > longest_interc_time:
+                            longest_interc_time = threat_coords["t"]
+
+            if closest_distance_to_base > intercep["range"]:
+                continue
+
+            optimal_velocity_interc = closest_distance_to_base/interc_time_threat
+
+            if intercep["cost_type"] == "unit":
+                interception_cost = intercep["price"]
+            else:
+                interception_cost = intercep["price"] * interc_time_threat
+
+            response_details = {
+                "response_id": len(response_options) + 1,
+                "base_id": base["id"],
+                "base_name": base["name"],
+                "air_def_id": intercep["id"],
+                "air_def_name": intercep["name"],
+                "cost": interception_cost,
+                "distance": closest_distance_to_base,
+                "interc_time": interc_time_threat,
+                "interc_lat": interception_coords[0],
+                "interc_lon": interception_coords[1],
+                "speed": optimal_velocity_interc
+            }
+
+            response_options.append(response_details)
+
+            if PLOT != "none":
+                # Path of interceptor
+                # Calculate x, y, z components of interceptor velocity
+                # Get difference between starting and ending coordinates and calculate speed
+                base_intercep_coords_difference = np.array(interception_coords) - np.array(coords_base)
+                # latitude/s   longitude/s   m/s !!!
+                velocity_intercep_vector = base_intercep_coords_difference / interc_time_threat
+                interceptor_path = []
+                d_time_s = 0 
+                while d_time_s <= interc_time_threat + TIME_DELTA * 3: # Plot paths a little past interception
+                    d_lat = velocity_intercep_vector[0] * d_time_s
+                    d_lon = velocity_intercep_vector[1] * d_time_s
+                    new_latitude = coords_base[0] + d_lat
+                    new_longitude = coords_base[1] + d_lon
+                    next_interc_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": intercep["name"], "info": str(intercep), "t": d_time_s}
+                    interceptor_path.append(next_interc_loc)
+                    d_time_s += TIME_DELTA
+
+                interceptor_paths.append(interceptor_path)
+
+    if len(response_options) < 1:
+        return Classification.IMPOSSIBLE
+
+    # Choose cheapest response option
+    min_cost = math.inf
+    chosen_resp = response_options[0]
+    for resp in response_options:
+        if resp["cost"] < min_cost:
+            min_cost = resp["cost"]
+            chosen_resp = resp
+    
+    if PLOT != "none":
+        record_id = str(uuid.uuid4())[:8]
+        if "record_id" in radar_data_dict.keys():
+            record_id = radar_data_dict["record_id"]
+        plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths, record_id)
+
+    response = Response(base=str(chosen_resp["base_name"]), type=str(chosen_resp["air_def_name"]), latitude=chosen_resp["interc_lat"], longitude=chosen_resp["interc_lon"])
+
+    return response
+
 
 def plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths, record_id):
     data_points_bases = {"latitude": [RADAR_LAT_1, RADAR_LAT_2, RADAR_LAT_3],
@@ -211,159 +358,8 @@ def plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths,
             os.makedirs("./plots")
 
         filename = filename + "_" + str(record_id) + ".html"
-            # filename = filename + "_" + str(uuid.uuid4())[:8]
         fig.write_html(filename)
 
-def calculate_object_path(start_latitude, start_longitude, d_time, max_time, object_speed, heading_deg, info_text):
-    # Vx = V0*cos(θ)
-    # Vy = V0*sin(θ)
-    theta = 90 - (heading_deg % 180) # angle relative to x axis
-    target_velocity_x = object_speed * math.cos(math.radians(theta))
-    target_velocity_y = object_speed * math.sin(math.radians(theta))
-    # Calculate next positions of target
-    # Calculate distance traveled in x and y directions
-    r_earth = 6378000 # m
-    object_path = []
-
-    for time_s in range(0,max_time, d_time):
-        dx = target_velocity_x * time_s
-        dy = target_velocity_y * time_s
-        # check for mistakes wrt units - radians
-        new_latitude  = start_latitude + (dy / r_earth) * (180 / math.pi)
-        new_longitude = start_longitude + (dx / r_earth) * (180 / math.pi) / math.cos(new_latitude * math.pi/180)
-        next_targ_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": "threat", "info": str(info_text), "t": time_s}
-        object_path.append(next_targ_loc)
-    
-    return object_path
-
-
-
-def get_threat_response(radar_message: RadarMessage, session: SessionDep):
-
-    all_bases = session.exec(select(Base)).all()
-    coords_target_vec = [radar_message.latitude, radar_message.longitude, radar_message.altitude_m]
-    radar_data_dict = radar_message.model_dump()
-    target_speed = radar_message.speed_ms
-    target_altitude = radar_message.altitude_m
-    # Get weapons in each base that have max alt to reach target
-
-    possible_bases_weapons = []
-    for b in all_bases:
-        base_dict = b.model_dump()
-        in_range_weapons = []
-        for a in b.airdefense:
-            if a.max_altitude >= target_altitude:
-                in_range_weapons.append(a.model_dump())
-
-        if len(in_range_weapons) > 0:
-            base_dict["defense_systems"] = in_range_weapons
-            possible_bases_weapons.append(base_dict)
-
-    if len(possible_bases_weapons) < 1:
-        # TODO better handling
-        return "No response possible"
-
-    threat_path = calculate_object_path(coords_target_vec[0], coords_target_vec[1], TIME_DELTA, MAX_TIME, target_speed, radar_message.heading_deg, str(radar_data_dict))
-    
-    # Calculate coordinate of interception for each in range weapon in each base
-    # Calculate cost for each option
-
-    interceptor_paths = []
-    response_options = []
-    longest_interc_time = 0 # For plotting threat path (where to end it)
-
-    # Iterate bases with possible weapons
-    for base in possible_bases_weapons:
-        base_lat = base["latitude"]
-        base_lon = base["longitude"]
-        # Iterate weapons in base
-        for intercep in base["defense_systems"]:
-            interception_coords = []
-            interc_time_threat = 0
-            coords_base = (base_lat, base_lon, 0)
-            interception_cost = 0
-            optimal_velocity_interc = math.inf
-            closest_distance_to_base = math.inf
-
-            for threat_coords in threat_path[1:]:
-                coords_target_n = (threat_coords["latitude"], threat_coords["longitude"], radar_message.altitude_m)
-                distance_2d = distance.distance(coords_base[:2], coords_target_n[:2]).m
-                distance_3d = np.sqrt(distance_2d**2 + (coords_target_n[2] - coords_base[2])**2)
-
-                if distance_3d < closest_distance_to_base:
-                    if distance_3d/threat_coords["t"] <= intercep["speed"]:
-                        closest_distance_to_base = distance_3d 
-                        interc_time_threat = threat_coords["t"]
-                        interception_coords = coords_target_n
-                        if threat_coords["t"] > longest_interc_time:
-                            longest_interc_time = threat_coords["t"]
-
-            if closest_distance_to_base > intercep["range"]:
-                continue
-
-            optimal_velocity_interc = closest_distance_to_base/interc_time_threat
-
-            if intercep["cost_type"] == "unit":
-                interception_cost = intercep["price"]
-            else:
-                interception_cost = intercep["price"] * interc_time_threat
-
-            response_details = {
-                "response_id": len(response_options) + 1,
-                "base_id": base["id"],
-                "base_name": base["name"],
-                "air_def_id": intercep["id"],
-                "air_def_name": intercep["name"],
-                "cost": interception_cost,
-                "distance": closest_distance_to_base,
-                "interc_time": interc_time_threat,
-                "interc_lat": interception_coords[0],
-                "interc_lon": interception_coords[1],
-                "speed": optimal_velocity_interc
-            }
-
-            response_options.append(response_details)
-
-            if PLOT != "none":
-                # Path of interceptor
-                # Calculate x, y, z components of interceptor velocity
-                # Get difference between starting and ending coordinates and calculate speed
-                base_intercep_coords_difference = np.array(interception_coords) - np.array(coords_base)
-                # latitude/s   longitude/s   m/s !!!
-                velocity_intercep_vector = base_intercep_coords_difference / interc_time_threat
-                interceptor_path = []
-                d_time_s = 0 
-                while d_time_s <= interc_time_threat + TIME_DELTA * 3: # Plot paths a little past interception
-                    d_lat = velocity_intercep_vector[0] * d_time_s
-                    d_lon = velocity_intercep_vector[1] * d_time_s
-                    new_latitude = coords_base[0] + d_lat
-                    new_longitude = coords_base[1] + d_lon
-                    next_interc_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": intercep["name"], "info": str(intercep), "t": d_time_s}
-                    interceptor_path.append(next_interc_loc)
-                    d_time_s += TIME_DELTA
-
-                interceptor_paths.append(interceptor_path)
-
-    if len(response_options) < 1:
-        return "No response possible"
-
-    # Choose cheapest response option
-    min_cost = math.inf
-    chosen_resp = response_options[0]
-    for resp in response_options:
-        if resp["cost"] < min_cost:
-            min_cost = resp["cost"]
-            chosen_resp = resp
-    
-    if PLOT != "none":
-        record_id = str(uuid.uuid4())[:8]
-        if "record_id" in radar_data_dict.keys():
-            record_id = radar_data_dict["record_id"]
-        plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths, record_id)
-
-    response = Response(base=str(chosen_resp["base_name"]), type=str(chosen_resp["air_def_name"]), latitude=chosen_resp["interc_lat"], longitude=chosen_resp["interc_lon"])
-
-    return response
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

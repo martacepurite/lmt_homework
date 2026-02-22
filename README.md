@@ -1,6 +1,38 @@
+## Overview
+
+**/app** - main API and interception algorithm code
+
+**/test** - pytest unit tests
+
+**/mock** - mock radar data generator and sender for testing and demonstration
+
+**/plots** - where plots are saved (if saving as html is enabled), bind directory for docker
+
 ## Setup
+
+### Run using Docker Compose
+
+Launch main app
+
+```
+docker compose run app
+```
+
+Run radar mock (prints responses to generated radar data, generates plots)
+
+```
+docker compose run mock
+```
+
+Run unit tests
+
+```
+docker compose run unit_tests
+```
+
 ### Dev setup 
 
+```
 python3 -m venv venv
 
 source venv/bin/activate
@@ -8,35 +40,22 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 fastapi dev app/main.py
+```
 
+Run mock radar:
 
-## Run mock radar
-
+```
 python mock/radar_mock.py
+```
 
-## Run using Docker Compose
+Run tests:
 
-docker compose up
-
-## Run using Docker
-
-docker build -t python-app ./app
-
-docker run -p 8000:8000 python-app fastapi run main.py --port 8000
-
-docker run -p 8000:8000 python-app pytest
-
-
-
-docker build -t python-mock ./mock
-
-
-## Run tests
-
+```
 pytest
+```
 
 
-### Code and info sources
+## Code and info sources
 
 https://fastapi.tiangolo.com/tutorial/sql-databases/#create-models
 https://sqlmodel.tiangolo.com/tutorial/fastapi/tests/#add-the-rest-of-the-tests
@@ -47,7 +66,6 @@ https://plotly.com/python/getting-started/
 https://plotly.com/python/scatter-plots-on-maps/
 https://plotly.com/python-api-reference/generated/plotly.graph_objects.Scattergeo.html
 https://plotly.com/python/map-configuration/
-
 https://geopy.readthedocs.io/en/latest/index.html#geopy.distance.Distance.destination
 https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-from-old-n-meters
 
@@ -55,7 +73,9 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 ## TODO/ideas
 
 * Dockerize development
-* Different options for running mock, tests etc on docker run (env vars or args somehow?)
+* Test error handling (invalid inputs)
+* Test radar_mock
+* Different options for running mock, tests etc on docker run (env vars or pass args to radar_mock)
 * Improve README
 * VSCode debugger?
 * Which api endpoints are needed 

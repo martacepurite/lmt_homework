@@ -2,9 +2,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool 
+import json
 
-from .main import app, get_session
-from .definitions import Base, AirDefenseSolution
+from ..app.main import app, get_session
+from ..app.definitions import Base, AirDefenseSolution, Classification
 
 
 @pytest.fixture(name="session")
@@ -27,7 +28,36 @@ def client_fixture(session: Session):
     yield client
     app.dependency_overrides.clear()
 
-def test_post_radar_message(session: Session, client: TestClient):
+def test_post_radar_message_invalid_inputs(session: Session, client: TestClient):
+    airdef_drone = AirDefenseSolution(name="Interceptor drone", speed=80, range=3000, max_altitude=2000, price=10000, cost_type="unit")
+    airdef_jet = AirDefenseSolution(name="Fighter jet", speed=700, range=3500, max_altitude=15000, price=1000, cost_type="time")
+    airdef_rocket= AirDefenseSolution(name="Rocket", speed=1500, range=100000, max_altitude=30000, price=300000, cost_type="unit")
+    airdef_50cal = AirDefenseSolution(name="50Cal", speed=900, range=2000, max_altitude=2000, price=1, cost_type="unit")
+
+    base_riga = Base(name="Riga", latitude=56.97475845607155, longitude=24.1670070219384, airdefense=[airdef_drone, airdef_jet, airdef_rocket, airdef_50cal])
+    base_liepaja = Base(name="Liepaja", latitude=56.516083346891044, longitude=21.0182217849017, airdefense=[airdef_drone, airdef_50cal])
+    base_daugavpils = Base(name="Daugavpils", latitude=55.87409588616014, longitude=26.51864225209475, airdefense=[airdef_drone, airdef_rocket, airdef_50cal])
+
+    session.add(base_riga)
+    session.add(base_liepaja)
+    session.add(base_daugavpils)
+    session.commit()
+
+    response = client.post(
+        "/radar/", json={
+            "speed_ms": "fdfsdg",
+            "altitude_m": "fsggaarwwqr",
+            "heading_deg": 0,
+            "latitude": 0,
+            "longitude": 0,
+            "report_time": 0.13
+        }
+    )
+
+    assert response.status_code != 200
+
+
+def test_post_radar_message_no_action(session: Session, client: TestClient):
     airdef_drone = AirDefenseSolution(name="Interceptor drone", speed=80, range=3000, max_altitude=2000, price=10000, cost_type="unit")
     airdef_jet = AirDefenseSolution(name="Fighter jet", speed=700, range=3500, max_altitude=15000, price=1000, cost_type="time")
     airdef_rocket= AirDefenseSolution(name="Rocket", speed=1500, range=100000, max_altitude=30000, price=300000, cost_type="unit")
@@ -52,10 +82,45 @@ def test_post_radar_message(session: Session, client: TestClient):
             "report_time": 0
         }
     )
-    data = response.json()
-    assert response.status_code == 200
 
-def test_post_radar_message_ignore(session: Session, client: TestClient):
+    assert response.status_code == 200
+    resp_json = response.json()
+    assert resp_json["message"] == Classification.IGNORE.value
+
+    response = client.post(
+        "/radar/", json={
+            "speed_ms": 40.2817357,
+            "altitude_m": 200.690476,
+            "heading_deg": 286.9629606,
+            "latitude": 56.489357,
+            "longitude": 25.368585,
+            "report_time": 1771501189,
+            "record_id": "b214e984"
+        }
+    )
+
+    assert response.status_code == 200
+    resp_json = response.json()
+    assert resp_json["message"] == Classification.CAUTION.value
+
+    response = client.post(
+        "/radar/", json={
+            "speed_ms": 100.2817357,
+            "altitude_m": 20000.690476,
+            "heading_deg": 286.9629606,
+            "latitude": 57.489357,
+            "longitude": 20.368585,
+            "report_time": 1771501189,
+            "record_id": "b214e984"
+        }
+    )
+
+    assert response.status_code == 200
+    resp_json = response.json()
+    assert resp_json["message"] == Classification.IMPOSSIBLE.value
+    print(json.dumps(resp_json, indent=4))
+
+def test_post_radar_message(session: Session, client: TestClient):
     airdef_drone = AirDefenseSolution(name="Interceptor drone", speed=80, range=3000, max_altitude=2000, price=10000, cost_type="unit")
     airdef_jet = AirDefenseSolution(name="Fighter jet", speed=700, range=3500, max_altitude=15000, price=1000, cost_type="time")
     airdef_rocket= AirDefenseSolution(name="Rocket", speed=1500, range=100000, max_altitude=30000, price=300000, cost_type="unit")
@@ -70,19 +135,23 @@ def test_post_radar_message_ignore(session: Session, client: TestClient):
     session.add(base_daugavpils)
     session.commit()
 
-    # speed_ms < 15, altitude_m > 200
     response = client.post(
         "/radar/", json={
-            "speed_ms": 12,
-            "altitude_m": 250,
-            "heading_deg": 0,
-            "latitude": 0,
-            "longitude": 0,
-            "report_time": 0
+            "speed_ms": 400.2817357,
+            "altitude_m": 200.690476,
+            "heading_deg": 286.9629606,
+            "latitude": 56.489357,
+            "longitude": 25.368585,
+            "report_time": 1771501189,
+            "record_id": "b214e984"
         }
     )
-    data = response.json()
+    resp_json = response.json()
     assert response.status_code == 200
+    assert resp_json["base"] == "Daugavpils"
+    assert resp_json["type"] == "Rocket"
+    assert resp_json["latitude"] == pytest.approx(56.2585534176)
+    assert resp_json["longitude"] == pytest.approx(26.7308660)
 
 
 # def test_read_bases(session: Session, client: TestClient):

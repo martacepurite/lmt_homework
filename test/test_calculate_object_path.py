@@ -1,25 +1,23 @@
 import pytest
-from .main import calculate_object_path
-from .definitions import Base, AirDefenseSolution
+from ..app.main import calculate_object_path
+from ..app.definitions import Base, AirDefenseSolution
 
-def test_calculate_object_path_constant():
+def test_calculate_object_path_heading_northwest():
 
-    path = calculate_object_path(start_latitude=45.32421, start_longitude=23.32423, d_time=100, max_time=1000, object_speed=1000, heading_deg=300, info_text="info")
+    d_time = 100
+    max_time = 1000
+    start_latitude=45.32421
+    start_longitude=23.32423
 
-    d_lat_ref = path[1]["latitude"] - path[0]["latitude"]
-    d_lon_ref = path[1]["longitude"] - path[0]["longitude"]
+    path = calculate_object_path(start_latitude=start_latitude, start_longitude=start_longitude, d_time=d_time, max_time=max_time, object_speed=1000, heading_deg=300, info_text="info")
 
-    for i in range(1,len(path)-1):
-        lon1 = path[i]["longitude"]
-        lon2 = path[i+1]["longitude"]
-        lat1 = path[i]["latitude"]
-        lat2 = path[i+1]["latitude"]
-        print(path[i])
-        print(lon2-lon1)
-        print(lat2-lat1)
-        ## TODO FIX
-        # assert (lon2-lon1) == pytest.approx(d_lon_ref, rel=1e-3)
-        # assert (lat2-lat1) == pytest.approx(d_lat_ref, rel=1e-3)
+    assert len(path) == max_time / d_time
+
+    path_elem = path[len(path)-1]
+
+    assert path_elem["latitude"] < start_latitude
+    assert path_elem["longitude"] > start_longitude
+
 
 def test_calculate_object_path_heading_east():
     path = calculate_object_path(start_latitude=45.32421, start_longitude=23.32423, d_time=100, max_time=1000, object_speed=1000, heading_deg=90, info_text="info")
