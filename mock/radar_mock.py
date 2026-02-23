@@ -5,7 +5,9 @@ import json
 import math
 import os
 import uuid
+import argparse
 
+parser = argparse.ArgumentParser()
 
 MIN_HEADING_DEG = 0
 MAX_HEADING_DEG = 360
@@ -129,24 +131,6 @@ actionable_radar_data = [
         "record_id": "28c037eb"
     },
     {
-        "speed_ms": 1479.5428755,
-        "altitude_m": 649.5084518,
-        "heading_deg": 11.843851,
-        "latitude": 55.8735191,
-        "longitude": 26.8349929,
-        "report_time": 1771501189,
-        "record_id": "725ce6b4"
-    },
-    {
-        "speed_ms": 400.2817357,
-        "altitude_m": 1545.690476,
-        "heading_deg": 286.9629606,
-        "latitude": 57.04575,
-        "longitude": 25.5451234,
-        "report_time": 1771501189,
-        "record_id": "f9f88b97"
-    },
-    {
         "speed_ms": 400.2817357, # Both Riga and Daugavpils
         "altitude_m": 200.690476,
         "heading_deg": 286.9629606,
@@ -155,38 +139,59 @@ actionable_radar_data = [
         "report_time": 1771501189,
         "record_id": "b214e984"
     }
-
 ]
-# 1 - Riga - dist < 100'000
-# 2 - Liepaja - dist < 30'000
-# 3 - Daugavp - dist < 100'000
-
-
-N_THREATS = 15
-
 
 if __name__ == '__main__':
 
-    # for n in range(N_THREATS):
+    parser.add_argument("-p", "--prepared", action="store_true")
+    parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("-n", "--ndata", type=int, default=10)
 
-    #     d = generate_random_radar_data()
-    #     r = requests.post(path_radar_api, json=d)
+    args = parser.parse_args()
 
-    #     print()
-    #     if r.status_code == 200:
-    #         print(json.dumps(d, indent=4))
-    #         print(json.dumps(r.json(), indent=4))
-    #     else:
-    #         print(r.text)
+    responses = []
+    radar_data = []
 
-    for d in actionable_radar_data:
+    if args.prepared:
+        for d in actionable_radar_data:
+            r = requests.post(path_radar_api, json=d)
+            if args.verbose:
+                radar_data.append(d)
+            if r.status_code == 200:
+                responses.append(r.json())
+            else:
+                responses.append(r.text)
         
-        r = requests.post(path_radar_api, json=d)
+    if not args.prepared:
+        for n in range(args.ndata):
+            d = generate_random_radar_data()
+            if args.verbose:
+                radar_data.append(d)
+            r = requests.post(path_radar_api, json=d)
+            if r.status_code == 200:
+                responses.append(r.json())
+            else:
+                responses.append(r.text)
 
-        print()
-        if r.status_code == 200:
-            # print(json.dumps(d, indent=4))
-            print(json.dumps(r.json(), indent=4))
-        else:
-            print(r.text)
+
+    if args.verbose:
+        for i in range(len(responses)):
+            print("Request data (" + str(i) + "):")
+            print(json.dumps(radar_data[i], indent=4))
+            print("Response (" + str(i) + "):")
+            print(json.dumps(responses[i], indent=4))
+            print()
+
+    if not args.verbose:
+        for r in responses:
+            print(json.dumps(r, indent=4))
+
+
+
+
+
+
+
+
+
 

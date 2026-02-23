@@ -10,12 +10,13 @@
 
 ## Setup
 
-### Run using Docker Compose
+### Run using Docker/Podman Compose
 
 Launch main app
 
 ```
 docker compose run app
+podman-compose run app
 ```
 
 Run radar mock (prints responses to generated radar data, generates plots)
@@ -73,11 +74,12 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 ## TODO/ideas
 
 * Dockerize development
+* Improve plots (make it easier to see different response options)
 * Test error handling (invalid inputs)
 * Test radar_mock
 * Different options for running mock, tests etc on docker run (env vars or pass args to radar_mock)
 * Improve README
-* VSCode debugger?
+* Make sure VSCode debugger works
 * Which api endpoints are needed 
 * floats with single precision
 * Error handling
