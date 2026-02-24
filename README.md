@@ -12,23 +12,31 @@
 
 ### Run using Docker/Podman Compose
 
+
+```
+podman machine start
+```
+
 Launch main app
 
 ```
 docker compose run app
 podman-compose run app
+podman-compose run --service-ports app
 ```
 
 Run radar mock (prints responses to generated radar data, generates plots)
 
 ```
 docker compose run mock
+podman-compose run mock
 ```
 
 Run unit tests
 
 ```
 docker compose run unit_tests
+podman-compose run unit_tests
 ```
 
 ### Dev setup 

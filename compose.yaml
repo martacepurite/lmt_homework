@@ -5,7 +5,6 @@ services:
       target: service_unit_tests
     command: pytest
 
-
   app:
     build:
       target: service_app
