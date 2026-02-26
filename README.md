@@ -30,6 +30,15 @@ Run radar mock (prints responses to generated radar data, generates plots)
 ```
 docker compose run mock
 podman-compose run mock
+podman-compose run --build mock
+podman-compose run mock python radar_mock.py -h
+    usage: radar_mock.py [-h] [-p] [-v] [-n NDATA]
+
+    options:
+    -h, --help         show this help message and exit
+    -p, --prepared     Use prepared radar data in radar_mock.py instead of generating new data
+    -v, --verbose      Print sent radar data
+    -n, --ndata NDATA  Number of radar data requests to generate and send
 ```
 
 Run unit tests
@@ -40,6 +49,17 @@ podman-compose run unit_tests
 ```
 
 ### Dev setup 
+
+Docker/Podman:
+
+
+```
+podman-compose -f compose.dev.yaml run --rm --build --service-ports app
+podman-compose -f compose.dev.yaml run --rm --build mock
+podman-compose -f compose.dev.yaml run --rm --build unit_tests
+
+```
+
 
 ```
 python3 -m venv venv

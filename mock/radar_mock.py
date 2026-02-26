@@ -143,9 +143,9 @@ actionable_radar_data = [
 
 if __name__ == '__main__':
 
-    parser.add_argument("-p", "--prepared", action="store_true")
-    parser.add_argument("-v", "--verbose", action="store_true")
-    parser.add_argument("-n", "--ndata", type=int, default=10)
+    parser.add_argument("-p", "--prepared", action="store_true", help="Use prepared radar data  in radar_mock.py instead of generating new data")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Print sent radar data")
+    parser.add_argument("-n", "--ndata", type=int, default=10, help="Number of radar data requests to generate and send")
 
     args = parser.parse_args()
 
@@ -185,13 +185,3 @@ if __name__ == '__main__':
     if not args.verbose:
         for r in responses:
             print(json.dumps(r, indent=4))
-
-
-
-
-
-
-
-
-
-

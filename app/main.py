@@ -12,6 +12,7 @@ import uvicorn
 
 from .definitions import AirDefenseSolution, Base, RadarMessage, Classification, Response, NoActionResponse
 
+
 RADAR_LAT_1 = 56.97475845607155
 RADAR_LON_1 = 24.1670070219384
 
@@ -351,14 +352,22 @@ def plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths,
     fig.update_layout(hoverdistance=100)
 
     if PLOT == "browser":
-        fig.show()
-    elif PLOT == "html":
+        fig.show(renderer="browser")
+    else:
         filename = "./plots/plot"
+
         if not os.path.exists("./plots"):
             os.makedirs("./plots")
-
-        filename = filename + "_" + str(record_id) + ".html"
-        fig.write_html(filename)
+        if PLOT == "html":
+            filename = filename + "_" + str(record_id) + ".html"
+            fig.write_html(filename)
+        # if PLOT == "png":
+        #     filename = filename + "_" + str(record_id) + ".png"
+        #     fig.write_image(filename)
+        # if PLOT == "jpeg":
+        #     filename = filename + "_" + str(record_id) + ".jpeg"
+        #     fig.write_image(filename)
+        
 
 
 if __name__ == "__main__":

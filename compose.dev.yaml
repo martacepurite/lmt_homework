@@ -1,0 +1,41 @@
+services:
+
+  unit_tests:
+    build:
+      target: service_unit_tests
+    command: pytest
+
+  app:
+    build:
+      target: service_app
+    ports:
+      - 8000:8000
+    command: fastapi dev main.py --host "0.0.0.0" --port 8000
+    networks:
+      - mynetwork
+    healthcheck:
+      test: ["CMD", "curl", "localhost:8000/docs"]
+      interval: 300s
+      start_period: 3s
+      start_interval: 3s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - type: bind
+        source: ./plots
+        target: /code/plots
+    environment:
+      # PLOT: "none"
+      PLOT: "html"
+
+  mock:
+    build:
+      target: service_mock
+    command: python radar_mock.py -p
+    networks:
+      - mynetwork
+    environment:
+      PATH_RADAR_API: "http://app:8000/radar/"
+
+networks:
+  mynetwork:
