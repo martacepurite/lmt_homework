@@ -52,14 +52,13 @@ podman-compose run unit_tests
 
 Docker/Podman:
 
-
 ```
 podman-compose -f compose.dev.yaml run --rm --build --service-ports app
 podman-compose -f compose.dev.yaml run --rm --build mock
 podman-compose -f compose.dev.yaml run --rm --build unit_tests
-
 ```
 
+Venv:
 
 ```
 python3 -m venv venv

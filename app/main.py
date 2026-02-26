@@ -9,6 +9,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import uuid
 import uvicorn
+import json
+# from pandas.io.json import
 
 from .definitions import AirDefenseSolution, Base, RadarMessage, Classification, Response, NoActionResponse
 
@@ -232,7 +234,7 @@ def get_threat_response(radar_message: RadarMessage, session: SessionDep):
                     d_lon = velocity_intercep_vector[1] * d_time_s
                     new_latitude = coords_base[0] + d_lat
                     new_longitude = coords_base[1] + d_lon
-                    next_interc_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": intercep["name"], "info": str(intercep), "t": d_time_s}
+                    next_interc_loc = {"latitude": new_latitude, "longitude": new_longitude, "type": intercep["name"], "info": str(json.dumps(intercep)), "t": d_time_s}
                     interceptor_path.append(next_interc_loc)
                     d_time_s += TIME_DELTA
 
@@ -286,15 +288,18 @@ def plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths,
     )))
 
     chosen_point_data = []
-    pt = {"latitude": chosen_resp["interc_lat"], "longitude": chosen_resp["interc_lon"], "type": chosen_resp["air_def_name"], "info": str(chosen_resp), "t": chosen_resp["interc_time"]}
+    pt = {"latitude": chosen_resp["interc_lat"], "longitude": chosen_resp["interc_lon"], "type": chosen_resp["air_def_name"], "info": json.dumps(chosen_resp, indent=4, separators=(", </br>", ": ")), "t": chosen_resp["interc_time"]}
     chosen_point_data.append(pt)
     df_chosen_point = pd.DataFrame(data=chosen_point_data)
 
+    # Interception point
     fig.add_trace(go.Scattergeo(
         lon = df_chosen_point['longitude'],
         lat = df_chosen_point['latitude'],
         text = df_chosen_point['info'],
+        textposition = 'top right',
         name = "Interception point",
+        # mode = 'markers+text',
         mode = 'markers',
         marker = dict(
             size = 12,
@@ -335,21 +340,31 @@ def plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths,
             ),  
         )
     )
+
+    interc_line_styles = {
+        "Rocket": dict(width = 5,color = 'purple', dash = 'dot'),
+        "Interceptor drone": dict(width = 5,color = 'royalblue', dash = 'dash'),
+        "50Cal": dict(width = 5,color = 'green', dash = 'dot'),
+        "Fighter jet": dict(width = 5,color = 'gold', dash = 'longdash'),
+    }
+
     # Interceptor paths
     for paths in interceptor_paths:
         df_interceptor = pd.DataFrame(paths)
+        info_dict = json.loads(df_interceptor["info"].loc[df_interceptor.index[0]])
         fig.add_trace(
             go.Scattergeo(
                 lon = df_interceptor['longitude'],
                 lat = df_interceptor['latitude'],
                 mode = 'lines',
-                line = dict(width = 2,color = 'blue'),
-                text = df_interceptor['info']
+                line = interc_line_styles[info_dict["name"]],
+                text = json.dumps(info_dict, indent=4, separators=(", </br>", ": ")),
+                name = info_dict["name"]
             )
         )
 
     fig.update_geos(fitbounds="locations", scope="europe", showcountries=True, lataxis_showgrid=True, lonaxis_showgrid=True, resolution=50)
-    fig.update_layout(hoverdistance=100)
+    fig.update_layout(hoverdistance=70)
 
     if PLOT == "browser":
         fig.show(renderer="browser")
@@ -361,13 +376,6 @@ def plot_paths(chosen_resp, threat_path, longest_interc_time, interceptor_paths,
         if PLOT == "html":
             filename = filename + "_" + str(record_id) + ".html"
             fig.write_html(filename)
-        # if PLOT == "png":
-        #     filename = filename + "_" + str(record_id) + ".png"
-        #     fig.write_image(filename)
-        # if PLOT == "jpeg":
-        #     filename = filename + "_" + str(record_id) + ".jpeg"
-        #     fig.write_image(filename)
-        
 
 
 if __name__ == "__main__":
