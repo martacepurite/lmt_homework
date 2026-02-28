@@ -100,14 +100,8 @@ https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-f
 
 ## TODO/ideas
 
-* Dockerize development
-* Improve plots (make it easier to see different response options)
 * Test error handling (invalid inputs)
 * Test radar_mock
-* Different options for running mock, tests etc on docker run (env vars or pass args to radar_mock)
-* Improve README
-* Make sure VSCode debugger works
-* Which api endpoints are needed 
 * floats with single precision
 * Error handling
 * More tests
